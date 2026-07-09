@@ -3,8 +3,10 @@ package com.nishi.stresslog.ui
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Insights
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.ShowChart
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -16,22 +18,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.nishi.stresslog.ui.dashboard.DashboardScreen
+import com.nishi.stresslog.ui.advice.AdviceScreen
+import com.nishi.stresslog.ui.analysis.AnalysisScreen
+import com.nishi.stresslog.ui.home.HomeScreen
 import com.nishi.stresslog.ui.moments.MomentDetailScreen
-import com.nishi.stresslog.ui.moments.MomentsScreen
+import com.nishi.stresslog.ui.records.RecordsScreen
 import com.nishi.stresslog.ui.settings.SettingsScreen
-import com.nishi.stresslog.ui.trend.TrendScreen
 
 private object Routes {
-    const val DASHBOARD = "dashboard"
-    const val TREND = "trend"
-    const val MOMENTS = "moments"
+    const val HOME = "home"
+    const val RECORDS = "records"
+    const val ANALYSIS = "analysis"
+    const val ADVICE = "advice"
     const val SETTINGS = "settings"
     const val MOMENT_DETAIL = "moments/{momentId}"
     fun momentDetail(id: Long) = "moments/$id"
@@ -40,9 +43,11 @@ private object Routes {
 private data class BottomTab(val route: String, val label: String, val icon: androidx.compose.ui.graphics.vector.ImageVector)
 
 private val BOTTOM_TABS = listOf(
-    BottomTab(Routes.DASHBOARD, "ホーム", Icons.Filled.Home),
-    BottomTab(Routes.TREND, "推移", Icons.Filled.ShowChart),
-    BottomTab(Routes.MOMENTS, "記録", Icons.Filled.List)
+    BottomTab(Routes.HOME, "ホーム", Icons.Filled.Home),
+    BottomTab(Routes.RECORDS, "記録", Icons.Filled.List),
+    BottomTab(Routes.ANALYSIS, "分析", Icons.Filled.Insights),
+    BottomTab(Routes.ADVICE, "アドバイス", Icons.Filled.Lightbulb),
+    BottomTab(Routes.SETTINGS, "設定", Icons.Filled.Settings)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -83,26 +88,29 @@ fun StressLogRoot(modifier: Modifier = Modifier) {
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = Routes.DASHBOARD,
+            startDestination = Routes.HOME,
             modifier = Modifier.padding(padding)
         ) {
-            composable(Routes.DASHBOARD) {
-                DashboardScreen(onOpenSettings = { navController.navigate(Routes.SETTINGS) })
+            composable(Routes.HOME) {
+                HomeScreen(onRecordMoment = { navController.navigate(Routes.RECORDS) })
             }
-            composable(Routes.TREND) {
-                TrendScreen()
+            composable(Routes.RECORDS) {
+                RecordsScreen(onOpenMoment = { id -> navController.navigate(Routes.momentDetail(id)) })
             }
-            composable(Routes.MOMENTS) {
-                MomentsScreen(onOpenMoment = { id -> navController.navigate(Routes.momentDetail(id)) })
+            composable(Routes.ANALYSIS) {
+                AnalysisScreen()
+            }
+            composable(Routes.ADVICE) {
+                AdviceScreen()
+            }
+            composable(Routes.SETTINGS) {
+                SettingsScreen()
             }
             composable(
                 route = Routes.MOMENT_DETAIL,
                 arguments = listOf(navArgument("momentId") { type = androidx.navigation.NavType.LongType })
             ) {
                 MomentDetailScreen(onBack = { navController.popBackStack() })
-            }
-            composable(Routes.SETTINGS) {
-                SettingsScreen(onBack = { navController.popBackStack() })
             }
         }
     }

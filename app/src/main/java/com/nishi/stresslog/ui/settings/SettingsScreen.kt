@@ -32,7 +32,7 @@ private val INTERVAL_OPTIONS = listOf(15, 30, 60)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onBack: () -> Unit,
+    onBack: (() -> Unit)? = null,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val settings by viewModel.settings.collectAsState()
@@ -42,8 +42,10 @@ fun SettingsScreen(
             TopAppBar(
                 title = { Text("設定") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "戻る")
+                    if (onBack != null) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Filled.ArrowBack, contentDescription = "戻る")
+                        }
                     }
                 }
             )

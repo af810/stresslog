@@ -6,14 +6,10 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.nishi.stresslog.ui.common.StressLevel
 
 private val StressPrimary = Color(0xFF6750A4)
 private val StressSecondary = Color(0xFF625B71)
-
-// ストレスレベルの色分け（グラフ・ゲージ共通）
-val StressColorCalm = Color(0xFF4CAF50)
-val StressColorModerate = Color(0xFFFFA726)
-val StressColorHigh = Color(0xFFE53935)
 
 private val LightColors = lightColorScheme(
     primary = StressPrimary,
@@ -37,8 +33,4 @@ fun StressLogTheme(
     )
 }
 
-fun stressScoreColor(score: Int): Color = when {
-    score < 40 -> StressColorCalm
-    score < 70 -> StressColorModerate
-    else -> StressColorHigh
-}
+fun stressScoreColor(score: Int): Color = StressLevel.of(score).color

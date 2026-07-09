@@ -22,7 +22,8 @@ fun StressLineChart(
     modifier: Modifier = Modifier,
     lineColor: Color = MaterialTheme.colorScheme.primary,
     thresholdScore: Int? = null,
-    showAxisLabels: Boolean = false
+    showAxisLabels: Boolean = false,
+    colorPointsByLevel: Boolean = false
 ) {
     if (points.isEmpty()) {
         Box(modifier = modifier.fillMaxWidth().height(160.dp), contentAlignment = Alignment.Center) {
@@ -62,7 +63,8 @@ fun StressLineChart(
         drawPath(path, color = lineColor, style = Stroke(width = 5f))
 
         points.forEach { (t, score) ->
-            drawCircle(color = lineColor, radius = 4f, center = Offset(xFor(t), yFor(score)))
+            val dotColor = if (colorPointsByLevel) StressLevel.of(score).color else lineColor
+            drawCircle(color = dotColor, radius = 6f, center = Offset(xFor(t), yFor(score)))
         }
     }
 }

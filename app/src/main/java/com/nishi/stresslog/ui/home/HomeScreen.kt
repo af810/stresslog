@@ -1,4 +1,4 @@
-package com.nishi.stresslog.ui.dashboard
+package com.nishi.stresslog.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,59 +11,55 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.nishi.stresslog.ui.common.DotTimeline
 import com.nishi.stresslog.ui.common.StressGauge
-import com.nishi.stresslog.ui.common.StressLineChart
-import com.nishi.stresslog.ui.common.stressStateLabel
-import com.nishi.stresslog.ui.theme.stressScoreColor
 
 private val QUICK_TAGS = listOf("仕事", "会議", "移動", "家庭", "人間関係", "睡眠不足", "その他")
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun DashboardScreen(
-    onOpenSettings: () -> Unit,
-    viewModel: DashboardViewModel = hiltViewModel()
+fun HomeScreen(
+    onRecordMoment: () -> Unit = {},
+    viewModel: HomeViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
     var showRecordDialog by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("StressLog") },
-                actions = {
-                    IconButton(onClick = onOpenSettings) {
-                        Icon(Icons.Filled.Settings, contentDescription = "設定")
-                    }
-                }
-            )
+        floatingActionButton = {
+            FloatingActionButton(onClick = { showRecordDialog = true }) {
+                Icon(Icons.Filled.Add, contentDescription = "今ストレスを感じた")
+            }
         }
     ) { padding ->
         LazyColumn(
@@ -72,21 +68,41 @@ fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
-                ) {
-                    val score = state.currentScore
-                    if (score != null) {
-                        StressGauge(score = score)
-                        Spacer(Modifier.height(8.dp))
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        Modifier.padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         Text(
-                            text = stressStateLabel(score),
+                            "現在のストレスレベル",
                             style = MaterialTheme.typography.titleMedium,
-                            color = stressScoreColor(score)
+                            modifier = Modifier.fillMaxWidth()
                         )
-                    } else {
-                        Text("データを取得中です…（学習中）", textAlign = TextAlign.Center)
+                        Spacer(Modifier.height(4.dp))
+
+                        val score = state.currentScore
+                        if (score != null) {
+                            Spacer(Modifier.height(8.dp))
+                            StressGauge(score = score)
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                state.stateMessage,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = state.level.color
+                            )
+                            if (state.suggestion.isNotBlank()) {
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    state.suggestion,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    textAlign = TextAlign.Center,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        } else {
+                            Spacer(Modifier.height(24.dp))
+                            Text("データを取得中です…（学習中）", textAlign = TextAlign.Center)
+                        }
                     }
                 }
             }
@@ -94,48 +110,39 @@ fun DashboardScreen(
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp)) {
-                        Text("直近24時間", style = MaterialTheme.typography.titleSmall)
-                        Spacer(Modifier.height(8.dp))
-                        StressLineChart(
-                            points = state.recentReadings.map { it.timestamp to it.stressScore },
-                            thresholdScore = state.threshold
+                        Text("今日の記録", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "${state.todayEventCount}回のストレス反応を検知",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.outline
                         )
+                        Spacer(Modifier.height(8.dp))
+                        DotTimeline(dots = state.todayDots)
                     }
                 }
             }
 
-            if (state.suggestion.isNotBlank()) {
+            if (state.latestInsight != null) {
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
                     ) {
-                        Column(Modifier.padding(16.dp)) {
-                            Text("おすすめの解消法", style = MaterialTheme.typography.titleSmall)
-                            Spacer(Modifier.height(4.dp))
-                            Text(state.suggestion)
+                        Row(Modifier.padding(16.dp)) {
+                            Icon(
+                                Icons.Filled.SmartToy,
+                                contentDescription = null,
+                                modifier = Modifier.size(28.dp),
+                                tint = MaterialTheme.colorScheme.secondary
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Column {
+                                Text("直近のアドバイス", style = MaterialTheme.typography.titleSmall)
+                                Spacer(Modifier.height(4.dp))
+                                Text(state.latestInsight!!)
+                            }
                         }
                     }
-                }
-            }
-
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Button(
-                        onClick = { showRecordDialog = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("今ストレスを感じた")
-                    }
-                }
-            }
-
-            item {
-                OutlinedButton(onClick = { viewModel.sampleNow() }, modifier = Modifier.fillMaxWidth()) {
-                    Text("今すぐ計測（デバッグ用）")
                 }
             }
         }

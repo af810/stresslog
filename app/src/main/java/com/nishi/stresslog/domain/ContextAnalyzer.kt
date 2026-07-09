@@ -6,6 +6,8 @@ import javax.inject.Inject
 
 data class StressInsight(val message: String)
 
+data class FactorRank(val rank: Int, val tag: String, val count: Int)
+
 private val WEEKDAY_NAMES = mapOf(
     Calendar.SUNDAY to "日曜",
     Calendar.MONDAY to "月曜",
@@ -78,6 +80,17 @@ class ContextAnalyzer @Inject constructor() {
             "%sの時間帯にストレスを感じやすい傾向があります（過去%d件）。この時間の前に短い休憩を挟むと予防になるかもしれません。"
                 .format(bucket, list.size)
         )
+    }
+
+    /** タグの出現件数トップ3を「よくあるストレス要因」として返す */
+    fun rankFactors(moments: List<StressMoment>): List<FactorRank> {
+        return moments.flatMap { it.tags }
+            .groupingBy { it }
+            .eachCount()
+            .entries
+            .sortedByDescending { it.value }
+            .take(3)
+            .mapIndexed { index, entry -> FactorRank(index + 1, entry.key, entry.value) }
     }
 
     private fun weekdayOf(timestamp: Long): Int =
