@@ -30,7 +30,7 @@ function NextInRange([double]$lo, [double]$hi) {
 }
 
 $now = Get-Date
-$startDay = $now.Date.AddDays(-60)
+$startDay = $now.Date.AddDays(-30)
 
 $readingRows = New-Object System.Collections.Generic.List[string]
 $momentRows = New-Object System.Collections.Generic.List[string]
@@ -46,7 +46,7 @@ $suggestDay = "1分だけ席を立って歩いてみましょう。軽い運動�
 $suggestNight = "画面から少し離れて深呼吸を。夜のブルーライトは交感神経をさらに刺激することがあります。"
 $suggestSevere = "かなり高いストレス反応が出ています。4-7-8呼吸法（4秒吸う→7秒止める→8秒吐くを3セット）を試してみましょう。"
 
-for ($d = 0; $d -lt 60; $d++) {
+for ($d = 0; $d -lt 30; $d++) {
     $day = $startDay.AddDays($d)
     $dow = [int]$day.DayOfWeek
     $badDayRoll = $rand.NextDouble()
@@ -55,13 +55,8 @@ for ($d = 0; $d -lt 60; $d++) {
     $isTueWed = $false
     if ($dow -eq 2 -or $dow -eq 3) { $isTueWed = $true }
 
-    $isRecent = $d -ge 58
     $hours = @()
-    if ($isRecent) {
-        for ($k = 0; $k -lt 48; $k++) { $hours += ($k * 0.5) }
-    } else {
-        $hours = @(7.0, 10.0, 13.0, 15.5, 18.0, 21.0)
-    }
+    for ($k = 0; $k -lt 144; $k++) { $hours += ($k * (10.0/60.0)) }
 
     foreach ($h in $hours) {
         $sampleTime = $day.AddHours($h)
@@ -122,7 +117,7 @@ foreach ($spec in $manualSpecs) {
         $attempts = 0
         $day = $null
         while ($attempts -lt 50) {
-            $daysAgo = Get-Random -Minimum 1 -Maximum 59
+            $daysAgo = Get-Random -Minimum 1 -Maximum 29
             $candidate = $now.Date.AddDays(0 - $daysAgo)
             $cdow = [int]$candidate.DayOfWeek
             if ($spec.dowSet -contains $cdow) { $day = $candidate; break }
@@ -147,6 +142,8 @@ foreach ($spec in $manualSpecs) {
 
 $sql = New-Object System.Text.StringBuilder
 [void]$sql.AppendLine("BEGIN TRANSACTION;")
+[void]$sql.AppendLine("DELETE FROM stress_readings;")
+[void]$sql.AppendLine("DELETE FROM stress_moments;")
 foreach ($row in $readingRows) {
     [void]$sql.AppendLine("INSERT INTO stress_readings (timestamp,stressScore,hrvRmssd,heartRate,baselineHrv,source) VALUES $row;")
 }
