@@ -7,13 +7,13 @@
 
 個人用ストレストラッキングAndroidアプリ「StressLog」。HRV・心拍から個人ベースラインとの乖離でストレススコアを算出し、通知・記録・グラフ表示・軽い対処法提案を行う。Apple Watchは持っていないため、Health Connect経由の実データ取得は将来対応とし、現状は `MockStressDataSource` でモック生成。
 
-## 現在の状態（2026-07-10時点）
+## 現在の状態（2026-07-11時点）
 
 - v1実装完了 → v2 UI再設計（モックアップ画像準拠）完了 → 1か月分・10分間隔の合成データ再生成、済み
-- 直近コミット: `regen seed data: 1 month at 10-min intervals, add Excel export tooling`
 - 5タブ構成（ホーム/記録/分析/アドバイス/設定）すべて動作確認済み、クラッシュなし
 - エミュレータ上のアプリDB自体（シード済みデータ）はgit管理外。同じデータが必要なら下記「合成データの再投入」手順を再実行
 - 別PC（Android Studio未導入・クリーン環境）でゼロから再現し、5タブ全描画・FATAL 0件を確認済み
+- **圧力センサー(BLE)機能を追加、6番目のタブ「センサー」として実装済み**。詳細は下記「圧力センサー(BLE)機能」参照
 
 ## 環境構築（新PCで必要な作業）
 
@@ -94,7 +94,52 @@ adb shell "run-as com.nishi.stresslog sh -c 'cat /data/local/tmp/seed.sql | sqli
 コミット済み `seed.sql` の中身: readings 4320件（2026-06-09〜07-09）、moments 157件（AUTO 136 / MANUAL 21）。
 **タイムスタンプは生成時点で固定**なので、後日投入すると「今日」のデータが存在しない状態になる。ホームの「今日の記録 0回」や記録タブの初期表示が空になるのはこのためで、バグではない。日付を現在に合わせたい場合のみ `gen_seed.ps1` を再実行する（実行時刻から30日遡って生成される）。
 
-## 設計上の意図的な既存設計書からの逸脱（v2実装時）
+## 圧力センサー(BLE)機能
+
+ESP32-DevKitC V4 + Walfront薄膜感圧抵抗(FSR)センサーから圧力値をBLEで受信し、
+6番目のタブ「センサー」にリアルタイム表示する機能。Room・StressCalculator等の
+既存ストレススコア機能には一切触れない完全な追加。
+
+- GATT仕様の唯一の正: `docs/BLE_PRESSURE.md`（UUID・6バイトのnotifyフォーマット・配線図・校正手順）
+- アプリ側: `data/ble/`（BLEクライアント、UUID定数の集約は`PressureBleSpec.kt`のみ）+ `ui/sensor/`（画面・ViewModel）
+- ESP32ファーム: `firmware/esp32_pressure/esp32_pressure.ino`（NimBLE-Arduino）
+- PC側の仮想ペリフェラル（Android実機なしで検証するための開発ツール）: `tools/ble/fake_pressure_peripheral.py`
+
+### 実機なしでの検証方法（Google Bumble + netsim）
+
+Androidエミュレータは内蔵の仮想Bluetoothコントローラ**netsim**を持っており、Google製の
+Python BluetoothスタックBumbleが`android-netsim` transportでそこに直接ぶら下がれる。
+PC上でBumbleを「仮想の圧力センサーBLEペリフェラル」として動かせば、エミュレータ内の
+アプリは本物の`BluetoothLeScanner`/`BluetoothGatt` APIで、本物のGATT通信としてそれを
+スキャン・接続・購読できる。2026-07-11に実証済み（下記手順で接続・10Hz notify・波形描画まで確認済み）。
+
+```powershell
+# 1. Bumbleとその依存(android-netsim transportがgrpcを使う。requirements.txtに含めているので pip install -r で足りる)
+py -3.11 -m venv tools/ble/.venv
+tools/ble/.venv/Scripts/pip install -r tools/ble/requirements.txt
+
+# 2. エミュレータは netsim 有効化フラグ付きで起動すること(BLE開発時のみ必要)
+emulator -avd Pixel_7_API35 -packet-streamer-endpoint default
+
+# 3. 仮想圧力センサーを起動。"StressLog-PS" として advertise が始まる
+tools/ble/.venv/Scripts/python tools/ble/fake_pressure_peripheral.py tools/ble/device1.json android-netsim
+
+# 4. アプリ側にBLE権限を付与してから起動
+adb shell pm grant com.nishi.stresslog android.permission.BLUETOOTH_SCAN
+adb shell pm grant com.nishi.stresslog android.permission.BLUETOOTH_CONNECT
+adb shell am start -n com.nishi.stresslog/.MainActivity
+```
+
+「センサー」タブ→「デバイスをスキャン」→ 数秒で「接続済み（StressLog-PS）」になり、圧力値と波形が10Hzで動き続ける。
+
+実機ESP32に差し替える際は、このBumbleプロセスを止めてESP32(esp32_pressure.ino書き込み済み)の
+電源を入れるだけでよい。アプリ側のコード変更は不要（同じUUID/フォーマットで待ち受けているため）。
+
+### この機能追加でハマった点
+
+- **`android-netsim` transportは`grpc`パッケージに依存するが、`bumble`本体のpipインストールには含まれない**: `ModuleNotFoundError: No module named 'grpc'`になる。`requirements.txt`に`grpcio`/`protobuf`を明記して同梱済み
+- **広告データがレガシー広告の31バイト上限を超えると拡張広告にフォールバックし、netsimの仮想コントローラがそれを未サポートで`HCI_Error(INVALID_COMMAND_PARAMETERS_ERROR)`になる**: `CompleteLocalName`(14バイト)+128bit `ServiceUUID`のリスト(18バイト)の合計32バイトが原因だった。ローカル名を`advertising_data`、サービスUUIDを`scan_response_data`に分けて解決（`fake_pressure_peripheral.py`参照）。Androidのアクティブスキャンは両方をマージしてから`ScanFilter`にかけるため、`setServiceUuid`によるフィルタは引き続き機能する
+- **スクリーンショットの解像度と表示解像度が異なる**: `adb exec-out screencap`は実機解像度(例: 1080x2400)のPNGを返すが、Claudeに表示される画像は縮小表示（例: 900x2000、倍率1.2）されることがある。目視でタップ座標を決める際は表示上のピクセル位置を「表示倍率」で逆算してから`adb shell input tap`に渡す必要がある。確実なのは従来どおり`uiautomator dump`で`bounds`を読む方法
 
 - Analysis画面の時間帯別ヒートマップ集計: 設計書はSQLでUTCバケット集計する想定だったが、タイムゾーンバグを避けるためKotlin側で `Calendar.HOUR_OF_DAY` を使ったローカルタイム集計に変更
 - Records画面: 設計書には日/週/月切替の想定があったが、モックアップ画像に忠実に日送りのみのシンプルな構成にした

@@ -9,3 +9,5 @@ _build/*.xml
 captures/
 .externalNativeBuild/
 .cxx/
+tools/ble/.venv/
+__pycache__/

@@ -6,6 +6,7 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -28,6 +29,7 @@ import com.nishi.stresslog.ui.analysis.AnalysisScreen
 import com.nishi.stresslog.ui.home.HomeScreen
 import com.nishi.stresslog.ui.moments.MomentDetailScreen
 import com.nishi.stresslog.ui.records.RecordsScreen
+import com.nishi.stresslog.ui.sensor.SensorScreen
 import com.nishi.stresslog.ui.settings.SettingsScreen
 
 private object Routes {
@@ -36,6 +38,7 @@ private object Routes {
     const val ANALYSIS = "analysis"
     const val ADVICE = "advice"
     const val SETTINGS = "settings"
+    const val SENSOR = "sensor"
     const val MOMENT_DETAIL = "moments/{momentId}"
     fun momentDetail(id: Long) = "moments/$id"
 }
@@ -47,7 +50,8 @@ private val BOTTOM_TABS = listOf(
     BottomTab(Routes.RECORDS, "記録", Icons.Filled.List),
     BottomTab(Routes.ANALYSIS, "分析", Icons.Filled.Insights),
     BottomTab(Routes.ADVICE, "アドバイス", Icons.Filled.Lightbulb),
-    BottomTab(Routes.SETTINGS, "設定", Icons.Filled.Settings)
+    BottomTab(Routes.SETTINGS, "設定", Icons.Filled.Settings),
+    BottomTab(Routes.SENSOR, "センサー", Icons.Filled.Sensors)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -105,6 +109,9 @@ fun StressLogRoot(modifier: Modifier = Modifier) {
             }
             composable(Routes.SETTINGS) {
                 SettingsScreen()
+            }
+            composable(Routes.SENSOR) {
+                SensorScreen()
             }
             composable(
                 route = Routes.MOMENT_DETAIL,

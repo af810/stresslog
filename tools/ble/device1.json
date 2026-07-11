@@ -1,0 +1,6 @@
+{
+    "name": "StressLog-PS",
+    "address": "F0:F1:F2:F3:F4:F5",
+    "advertising_interval": 200,
+    "keystore": "JsonKeyStore"
+}
