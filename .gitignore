@@ -3,11 +3,12 @@ build/
 *.iml
 .idea/
 local.properties
-_build/*.log
-_build/*.png
-_build/*.xml
+archive_dev_scripts/*.log
+archive_dev_scripts/*.png
+archive_dev_scripts/*.xml
 captures/
 .externalNativeBuild/
 .cxx/
 tools/ble/.venv/
 __pycache__/
+web/

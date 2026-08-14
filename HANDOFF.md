@@ -69,7 +69,7 @@ adb shell am start -n com.nishi.stresslog/.MainActivity
 ## ハマりどころ（既知の落とし穴）
 
 - **初回起動が権限ダイアログで止まる**: `POST_NOTIFICATIONS` の実行時権限ダイアログ（`GrantPermissionsActivity`）が前面に出てMainActivityが立ち上がらず、`pidof` も空を返すためクラッシュと紛らわしい。`adb shell pm grant com.nishi.stresslog android.permission.POST_NOTIFICATIONS` を先に流せば回避できる
-- **`_build/*.ps1` のパスは前PC決め打ち**: `install_run.ps1` などが `C:\Users\akimi\Desktop\AndroidDev\Sdk` やAPKの絶対パスを直書きしている。別PCではそのまま動かないので `adb` / `gradlew` を直接叩くか、パスを書き換える
+- **`archive_dev_scripts/*.ps1`（旧`_build/`）のパスは前PC決め打ち**: `install_run.ps1` などが `C:\Users\akimi\Desktop\AndroidDev\Sdk` やAPKの絶対パスを直書きしている。別PCではそのまま動かないので `adb` / `gradlew` を直接叩くか、パスを書き換える。詳細は `archive_dev_scripts/README.md` 参照
 - **Kotlin 2.0 + Compose**: `org.jetbrains.kotlin.plugin.compose` プラグインが別途必須（Compose CompilerがKotlinコンパイラから分離された）
 - **PowerShellスクリプトの日本語文字化け**: `.ps1` に日本語を含めて `powershell -File` で実行するとBOMなしだと文字化け/パースエラーになることがある。`[System.IO.File]::WriteAllText(path, content, New-Object System.Text.UTF8Encoding($true))` でBOM付き保存する
 - **PowerShellの負数リテラル引数**: `Foo -4.0 4.0` のように関数に負の数を直接渡すと文字列結合的な誤動作をすることがある。一度変数に入れてから渡す
@@ -79,17 +79,17 @@ adb shell am start -n com.nishi.stresslog/.MainActivity
 
 ## 合成データの再投入（1か月・10分間隔）
 
-`_build/seed.sql` はコミット済みなので、**同じデータでよければ `gen_seed.ps1` の再実行は不要**。pushするだけでよい。
+`archive_dev_scripts/seed.sql`（旧`_build/`）はコミット済みなので、**同じデータでよければ `gen_seed.ps1` の再実行は不要**。pushするだけでよい。
 なお投入前に一度アプリを起動してDBファイルを生成しておくこと（未起動だと `stresslog.db` が存在しない）。
 
 ```bash
-powershell -File "_build/gen_seed.ps1"   # 日付を「今」に合わせたい場合のみ。_build/seed.sql を再生成
-adb push "_build/seed.sql" //data/local/tmp/seed.sql
+powershell -File "archive_dev_scripts/gen_seed.ps1"   # 日付を「今」に合わせたい場合のみ。seed.sql を再生成
+adb push "archive_dev_scripts/seed.sql" //data/local/tmp/seed.sql
 adb shell am force-stop com.nishi.stresslog
 adb shell "run-as com.nishi.stresslog sh -c 'cat /data/local/tmp/seed.sql | sqlite3 /data/data/com.nishi.stresslog/databases/stresslog.db'"
 ```
 
-`_build/gen_seed.ps1` は30日分×144サンプル/日（10分間隔）でHRV/心拍/ストレススコアを乱数生成しSQLを出力。`_build/make_excel.py`（要Python + openpyxl）でreadings/momentsをxlsxにエクスポート可能。
+`archive_dev_scripts/gen_seed.ps1` は30日分×144サンプル/日（10分間隔）でHRV/心拍/ストレススコアを乱数生成しSQLを出力。`archive_dev_scripts/make_excel.py`（要Python + openpyxl）でreadings/momentsをxlsxにエクスポート可能。
 
 コミット済み `seed.sql` の中身: readings 4320件（2026-06-09〜07-09）、moments 157件（AUTO 136 / MANUAL 21）。
 **タイムスタンプは生成時点で固定**なので、後日投入すると「今日」のデータが存在しない状態になる。ホームの「今日の記録 0回」や記録タブの初期表示が空になるのはこのためで、バグではない。日付を現在に合わせたい場合のみ `gen_seed.ps1` を再実行する（実行時刻から30日遡って生成される）。
