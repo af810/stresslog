@@ -83,11 +83,34 @@ tools/ble/fake_pressure_peripheral.py（Bumble） → android-netsim(エミュ�
 ```
 どちらも`docs/BLE_PRESSURE.md`の同じ仕様に従っているため、Android側のコードは共通。
 
+## 既知の問題: Arduino IDEのボードマネージャがESP32コアを自動更新してクラッシュする
+
+2026-07-11のセッションでコアを**3.3.6に固定**して解決したはずが、後日Arduino IDE 2のボードマネージャが
+バックグラウンドで`esp32:esp32`コアを**3.3.10**まで自動更新し、同じ症状（`assert failed: npl_freertos_mutex_pend`、
+`rst:0x10 (RTCWDT_RTC_RESET)`の再起動ループ、BLE advertiseに到達しない＝ブラウザ/アプリのデバイス選択に出てこない）
+が再発した。arduino-cliは**バージョン付きでのuninstallを受け付けない**ため、無指定でuninstallしてから
+3.3.6を入れ直す必要がある。
+
+```powershell
+# 1. バージョン無指定でアンインストール（付随ツールも含めて全部消える）
+arduino-cli core uninstall esp32:esp32
+
+# 2. 3.3.6を入れ直す
+arduino-cli core install esp32:esp32@3.3.6
+
+# 3. 再コンパイル・再書き込み
+arduino-cli compile --fqbn esp32:esp32:esp32 --upload -p COM4 firmware/esp32_pressure
+```
+
+再発防止のため、Arduino IDEのボードマネージャで自動更新が走っていないか（またはネットワークが疎通する状態で
+IDEを開きっぱなしにしていないか）を疑うこと。シリアルモニタでリセットループのログが出ていたら、まずこのコア
+バージョンを疑うのが早い（`arduino-cli core list`で現在のアクティブバージョンを確認できる）。
+
 ## 現状のステータス
 
 - ✅ Bumble仮想ペリフェラル ↔ エミュレータ上のアプリ: 接続・10Hz notify・波形描画まで確認済み
-- ✅ 実機ESP32へのファーム書き込み: 成功、クラッシュなし、BLE advertise確認済み(PC実機Bluetoothでも検出)
-- ⬜ 実機ESP32 ↔ 実機FSRセンサー: **配線調査中。押しても`rawAdc`が0のまま変化しない**
-- ⬜ 実機ESP32 ↔ Androidアプリ: 未検証（Android実機がないため。上記配線問題の解決後、Bumble側と同じ手順でアプリからスキャン・接続すれば動くはず）
+- ✅ 実機ESP32へのファーム書き込み: 成功、クラッシュなし、BLE advertise確認済み(PC実機Bluetoothでも検出、2026-08-14のコア再発時も3.3.6再固定で復旧確認済み)
+- ⬜ 実機ESP32 ↔ 実機FSRセンサー: **FSR未配線のため未検証**（GPIO34はフローティングで`rawAdc`が2100〜2560あたりを揺れているだけ。配線後に再検証すること）
+- ⬜ 実機ESP32 ↔ Androidアプリ: 未検証（Android実機がないため。Web版なら`web/`からブラウザで直接BLE接続して検証可能。手順は`web/README.md`参照）
 
 より詳しいセットアップ手順・ハマりどころは `HANDOFF.md` の「圧力センサー(BLE)機能」セクション参照。
