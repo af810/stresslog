@@ -17,8 +17,10 @@ Androidアプリに送るための仕様。**この文書がSingle Source of Tru
 
 ```
 Service          f1a70001-8b2c-4e5d-9a6f-0c3b7d2e5a10
-└ Characteristic f1a70002-8b2c-4e5d-9a6f-0c3b7d2e5a10   properties: READ | NOTIFY
-    CCCD (0x2902) あり（notify購読用）
+├ Characteristic f1a70002-8b2c-4e5d-9a6f-0c3b7d2e5a10   properties: READ | NOTIFY
+│   CCCD (0x2902) あり（notify購読用）
+└ Characteristic f1a70003-8b2c-4e5d-9a6f-0c3b7d2e5a10   properties: WRITE
+    ストレスLED制御（後述）
 ```
 
 ### 値のフォーマット（6バイト、リトルエンディアン）
@@ -34,16 +36,40 @@ Service          f1a70001-8b2c-4e5d-9a6f-0c3b7d2e5a10
 `rawAdc` と `forceKg` を両方送るのが要点。FSRの校正カーブ（後述）が決まる前でも
 `rawAdc` だけで画面表示・通信確認ができ、開発が校正待ちで止まらない。
 
+## ストレスLED（GPIO22）制御
+
+アプリがストレススコアの閾値超過を検知したら、LED制御Characteristic
+(`f1a70003-...`) に1バイト書き込んで ESP32 の GPIO22 に繋いだLEDを点灯させる。
+
+| 書き込む値 | 意味 |
+|---|---|
+| `0x01` | ストレス閾値超過 → LED点灯を要求 |
+| `0x00` | 閾値以下に戻った → LED消灯を要求 |
+
+- ESP32はこの要求とは別に、自分でFSRの `rawAdc` を監視している。
+  `rawAdc` が握り検知しきい値（ファーム内 `GRIP_DETECT_THRESHOLD`）を超えたら、
+  アプリからの要求に関わらず **LEDを消灯し、要求状態を "消灯" にリセットする**
+  （＝製品を握ることでアラートを確認・解除する動作）。次に点灯するのは
+  アプリが再度 `0x01` を書き込んだとき
+- この解除ロジックはファームウェア側に閉じているため、BLE未接続でも動作する
+- 現状Web版のみがこのCharacteristicに書き込む。Android実機クライアント
+  (`PressureBleClient.kt`) と開発用仮想ペリフェラル (`fake_pressure_peripheral.py`)
+  は未対応（読み取り専用の疎通確認にのみ使う場合は影響しない）
+
 ## ESP32 配線
 
 ```
 3.3V ── FSR ──┬── GPIO34 (ADC1_CH6)
               └── 10kΩ ── GND
+
+GPIO22 ── LED(+) ──┬
+                    抵抗(220Ω程度) ── GND
 ```
 
 - 押す → FSRの抵抗が下がる → GPIO34の電圧が上がる → ADC値が上がる
 - **ADC1（GPIO32〜39）を使うこと。ADC2はWi-Fi/BLE無線使用中は使えない**
 - GPIO34は入力専用・内部プルアップなし。分圧回路の読み取りに適する
+- GPIO22は汎用デジタル出力。LEDのアノード側に直列抵抗（220Ω程度）を挟んでGNDへ
 
 ## 校正（forceKgの算出）
 
@@ -57,8 +83,9 @@ Service          f1a70001-8b2c-4e5d-9a6f-0c3b7d2e5a10
 
 | 実装 | 参照すべき値 |
 |---|---|
-| Bumble (`fake_pressure_peripheral.py`) | Service/Characteristic UUID, ローカル名, 6バイトフォーマット |
-| Android (`PressureBleSpec.kt`) | 同上 + スキャンフィルタに使うService UUID |
-| ESP32 (`esp32_pressure.ino`) | 同上 + 配線 + サンプリング/notify間隔 |
+| Bumble (`fake_pressure_peripheral.py`) | Service/Characteristic UUID, ローカル名, 6バイトフォーマット（LED Characteristicは未実装） |
+| Android (`PressureBleSpec.kt`) | 同上 + スキャンフィルタに使うService UUID（LED Characteristicは未実装） |
+| Web (`pressureBleSpec.ts` / `pressureBleClient.ts`) | 同上 + LED Characteristic UUID・書き込み |
+| ESP32 (`esp32_pressure.ino`) | 同上 + 配線 + サンプリング/notify間隔 + LED制御・握り検知しきい値 |
 
 UUIDやバイトフォーマットを変更する場合は、この3ファイルと本仕様書を必ず同時に更新すること。
