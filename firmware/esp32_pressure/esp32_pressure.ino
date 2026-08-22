@@ -82,7 +82,10 @@ float rawAdcToForceKg(int rawAdc) {
 }
 
 void sendPressureSample() {
-    int   rawAdc  = analogRead(PRESSURE_PIN);
+    // 実機配線では未押下時にADCが最大(4095)付近になることを確認した
+    // (3.3V-固定抵抗-GPIO34-FSR-GND の並びで、FSRが未押下=高抵抗のため)。
+    // 送信するrawAdcは「大きいほど強く押されている」で統一するため反転する
+    int rawAdc = ADC_MAX - analogRead(PRESSURE_PIN);
     float forceKg = rawAdcToForceKg(rawAdc);
 
     Serial.printf("rawAdc=%d\n", rawAdc);  // 配線確認用。動作確認できたら削除してよい
