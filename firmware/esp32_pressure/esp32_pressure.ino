@@ -40,6 +40,10 @@ static const int ADC_MAX      = 4095;
 // 別で、LEDを消すためだけの単純な検知。FSR未配線のため暫定値。配線後に実測して調整する
 static const int GRIP_DETECT_THRESHOLD = 700;
 
+// LED消灯に必要な「握っていた合計時間」。連続して握り続ける必要はなく、
+// 離してまた握るのを繰り返しても足し算で積み上がっていく
+static const unsigned long GRIP_HOLD_REQUIRED_MS = 3000;
+
 static const unsigned long SAMPLE_INTERVAL_MS = 100;  // 10Hz。docs/BLE_PRESSURE.md準拠
 
 static NimBLEServer*         pServer;
@@ -49,6 +53,10 @@ static unsigned long         lastSampleAt = 0;
 
 // アプリがLED点灯を要求しているか。BLE書き込みコールバックとloop()の両方から触るためvolatile
 static volatile bool stressLedRequested = false;
+
+// 握っていた時間の累積（離してもリセットしない、足し算方式）。
+// GRIP_HOLD_REQUIRED_MSに達したらLEDを消灯し、0に戻す
+static unsigned long gripHoldAccumMs = 0;
 
 class ServerCallbacks : public NimBLEServerCallbacks {
     void onConnect(NimBLEServer* server, NimBLEConnInfo& connInfo) override {
@@ -66,6 +74,10 @@ class LedCallbacks : public NimBLECharacteristicCallbacks {
         std::string value = characteristic->getValue();
         if (!value.empty()) {
             stressLedRequested = (value[0] != 0);
+            if (stressLedRequested) {
+                // 新しいアラートなので、前回までの握り時間の積み上げはリセットする
+                gripHoldAccumMs = 0;
+            }
         }
     }
 } ledCallbacks;
@@ -90,10 +102,15 @@ void sendPressureSample() {
 
     Serial.printf("rawAdc=%d\n", rawAdc);  // 配線確認用。動作確認できたら削除してよい
 
-    // 握ったらLED要求を解除する（消灯は「握って確認した」ことの合図。
-    // 離してもすぐには再点灯せず、次にアプリが点灯要求を送るまで消灯のまま）
+    // 握っている間だけ時間を積算する（離しても積算値はリセットしない＝足し算方式）。
+    // 合計がGRIP_HOLD_REQUIRED_MSに達したらLED要求を解除する（消灯は「握って確認した」
+    // ことの合図。離してもすぐには再点灯せず、次にアプリが点灯要求を送るまで消灯のまま）
     if (rawAdc >= GRIP_DETECT_THRESHOLD) {
-        stressLedRequested = false;
+        gripHoldAccumMs += SAMPLE_INTERVAL_MS;
+        if (gripHoldAccumMs >= GRIP_HOLD_REQUIRED_MS) {
+            stressLedRequested = false;
+            gripHoldAccumMs = 0;  // 次のアラートに備えてリセット
+        }
     }
     digitalWrite(LED_PIN, stressLedRequested ? HIGH : LOW);
 
