@@ -1,0 +1,1141 @@
+{
+  "modelId": "wesad-population-rf60-v1",
+  "featureMethod": "wesad-wrist60-elgendi100-acc25-v1",
+  "modelSha256": "cc9b301992234ea37dfc0de5c57781c0bc543f1feb5d1afdb0ff5671922e2899",
+  "evaluation": "Leave one subject out; non-overlapping 60 s windows; fixed parameters; all preprocessing label-blind",
+  "rejectedWindows": 4,
+  "evaluations": {
+    "heartMotion": {
+      "windows": 526,
+      "stressWindows": 154,
+      "balancedAccuracy": 0.8118628683144812,
+      "macroF1": 0.7779317816119422,
+      "auc": 0.9044651584974166,
+      "brier": 0.12849688178062632,
+      "confusionMatrix": [
+        [
+          290,
+          82
+        ],
+        [
+          24,
+          130
+        ]
+      ],
+      "subjects": 15,
+      "macroSubjectBalancedAccuracy": 0.811101229688186,
+      "folds": [
+        {
+          "testSubject": "S2",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 33,
+          "stressWindows": 10,
+          "balancedAccuracy": 0.7782608695652173,
+          "macroF1": 0.801920768307323,
+          "auc": 0.9217391304347826,
+          "brier": 0.12546952621338983,
+          "confusionMatrix": [
+            [
+              22,
+              1
+            ],
+            [
+              4,
+              6
+            ]
+          ]
+        },
+        {
+          "testSubject": "S3",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 34,
+          "stressWindows": 10,
+          "balancedAccuracy": 0.8291666666666666,
+          "macroF1": 0.8488888888888889,
+          "auc": 0.9833333333333334,
+          "brier": 0.05122793072065052,
+          "confusionMatrix": [
+            [
+              23,
+              1
+            ],
+            [
+              3,
+              7
+            ]
+          ]
+        },
+        {
+          "testSubject": "S4",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 35,
+          "stressWindows": 10,
+          "balancedAccuracy": 0.75,
+          "macroF1": 0.7878787878787878,
+          "auc": 0.968,
+          "brier": 0.09174272997269005,
+          "confusionMatrix": [
+            [
+              25,
+              0
+            ],
+            [
+              5,
+              5
+            ]
+          ]
+        },
+        {
+          "testSubject": "S5",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 35,
+          "stressWindows": 10,
+          "balancedAccuracy": 0.95,
+          "macroF1": 0.9638802889576883,
+          "auc": 1.0,
+          "brier": 0.04614568562541417,
+          "confusionMatrix": [
+            [
+              25,
+              0
+            ],
+            [
+              1,
+              9
+            ]
+          ]
+        },
+        {
+          "testSubject": "S6",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 35,
+          "stressWindows": 10,
+          "balancedAccuracy": 0.75,
+          "macroF1": 0.7878787878787878,
+          "auc": 0.9600000000000001,
+          "brier": 0.1081098872361234,
+          "confusionMatrix": [
+            [
+              25,
+              0
+            ],
+            [
+              5,
+              5
+            ]
+          ]
+        },
+        {
+          "testSubject": "S7",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S8",
+            "S9"
+          ],
+          "windows": 31,
+          "stressWindows": 6,
+          "balancedAccuracy": 0.94,
+          "macroF1": 0.8680851063829788,
+          "auc": 1.0,
+          "brier": 0.05378668117424278,
+          "confusionMatrix": [
+            [
+              22,
+              3
+            ],
+            [
+              0,
+              6
+            ]
+          ]
+        },
+        {
+          "testSubject": "S8",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S9"
+          ],
+          "windows": 36,
+          "stressWindows": 11,
+          "balancedAccuracy": 0.8890909090909092,
+          "macroF1": 0.8991596638655461,
+          "auc": 0.9927272727272727,
+          "brier": 0.054568524431786364,
+          "confusionMatrix": [
+            [
+              24,
+              1
+            ],
+            [
+              2,
+              9
+            ]
+          ]
+        },
+        {
+          "testSubject": "S9",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8"
+          ],
+          "windows": 35,
+          "stressWindows": 10,
+          "balancedAccuracy": 0.6799999999999999,
+          "macroF1": 0.668560606060606,
+          "auc": 0.626,
+          "brier": 0.22441573625743844,
+          "confusionMatrix": [
+            [
+              19,
+              6
+            ],
+            [
+              4,
+              6
+            ]
+          ]
+        },
+        {
+          "testSubject": "S10",
+          "trainingSubjects": [
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 37,
+          "stressWindows": 12,
+          "balancedAccuracy": 0.64,
+          "macroF1": 0.5044642857142857,
+          "auc": 0.7183333333333334,
+          "brier": 0.32357399635268663,
+          "confusionMatrix": [
+            [
+              7,
+              18
+            ],
+            [
+              0,
+              12
+            ]
+          ]
+        },
+        {
+          "testSubject": "S11",
+          "trainingSubjects": [
+            "S10",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 36,
+          "stressWindows": 11,
+          "balancedAccuracy": 0.88,
+          "macroF1": 0.8246753246753247,
+          "auc": 0.9963636363636363,
+          "brier": 0.13465977912143529,
+          "confusionMatrix": [
+            [
+              19,
+              6
+            ],
+            [
+              0,
+              11
+            ]
+          ]
+        },
+        {
+          "testSubject": "S13",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 35,
+          "stressWindows": 10,
+          "balancedAccuracy": 0.54,
+          "macroF1": 0.30663221360895776,
+          "auc": 0.872,
+          "brier": 0.28903999148348003,
+          "confusionMatrix": [
+            [
+              2,
+              23
+            ],
+            [
+              0,
+              10
+            ]
+          ]
+        },
+        {
+          "testSubject": "S14",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 36,
+          "stressWindows": 11,
+          "balancedAccuracy": 0.94,
+          "macroF1": 0.9080851063829787,
+          "auc": 1.0,
+          "brier": 0.07598827435682179,
+          "confusionMatrix": [
+            [
+              22,
+              3
+            ],
+            [
+              0,
+              11
+            ]
+          ]
+        },
+        {
+          "testSubject": "S15",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 36,
+          "stressWindows": 11,
+          "balancedAccuracy": 0.76,
+          "macroF1": 0.6656346749226006,
+          "auc": 0.9309090909090909,
+          "brier": 0.20737751172724417,
+          "confusionMatrix": [
+            [
+              13,
+              12
+            ],
+            [
+              0,
+              11
+            ]
+          ]
+        },
+        {
+          "testSubject": "S16",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 36,
+          "stressWindows": 11,
+          "balancedAccuracy": 0.9199999999999999,
+          "macroF1": 0.8795986622073578,
+          "auc": 1.0,
+          "brier": 0.07529731756203581,
+          "confusionMatrix": [
+            [
+              21,
+              4
+            ],
+            [
+              0,
+              11
+            ]
+          ]
+        },
+        {
+          "testSubject": "S17",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 36,
+          "stressWindows": 11,
+          "balancedAccuracy": 0.9199999999999999,
+          "macroF1": 0.8795986622073578,
+          "auc": 1.0,
+          "brier": 0.04895858600857715,
+          "confusionMatrix": [
+            [
+              21,
+              4
+            ],
+            [
+              0,
+              11
+            ]
+          ]
+        }
+      ],
+      "heldOutWristTransfer": {
+        "windows": 278,
+        "stressWindows": 24,
+        "balancedAccuracy": 0.8815616797900263,
+        "macroF1": 0.7152991132758837,
+        "auc": 0.944471784776903,
+        "brier": 0.09701242030103543,
+        "confusionMatrix": [
+          [
+            215,
+            39
+          ],
+          [
+            2,
+            22
+          ]
+        ]
+      }
+    },
+    "heartMotionPrv": {
+      "windows": 469,
+      "stressWindows": 130,
+      "balancedAccuracy": 0.7899591558883594,
+      "macroF1": 0.7595058659000855,
+      "auc": 0.8649307919219424,
+      "brier": 0.1499255325384093,
+      "confusionMatrix": [
+        [
+          267,
+          72
+        ],
+        [
+          27,
+          103
+        ]
+      ],
+      "subjects": 15,
+      "macroSubjectBalancedAccuracy": 0.7940401426270991,
+      "folds": [
+        {
+          "testSubject": "S2",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 31,
+          "stressWindows": 10,
+          "balancedAccuracy": 0.75,
+          "macroF1": 0.7801418439716312,
+          "auc": 0.9238095238095239,
+          "brier": 0.15622971056665003,
+          "confusionMatrix": [
+            [
+              21,
+              0
+            ],
+            [
+              5,
+              5
+            ]
+          ]
+        },
+        {
+          "testSubject": "S3",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 17,
+          "stressWindows": 5,
+          "balancedAccuracy": 0.9,
+          "macroF1": 0.9244444444444444,
+          "auc": 1.0,
+          "brier": 0.03518176551781561,
+          "confusionMatrix": [
+            [
+              12,
+              0
+            ],
+            [
+              1,
+              4
+            ]
+          ]
+        },
+        {
+          "testSubject": "S4",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 33,
+          "stressWindows": 10,
+          "balancedAccuracy": 0.85,
+          "macroF1": 0.8811524609843937,
+          "auc": 0.9869565217391304,
+          "brier": 0.07203056703389231,
+          "confusionMatrix": [
+            [
+              23,
+              0
+            ],
+            [
+              3,
+              7
+            ]
+          ]
+        },
+        {
+          "testSubject": "S5",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 35,
+          "stressWindows": 10,
+          "balancedAccuracy": 0.65,
+          "macroF1": 0.6693657219973009,
+          "auc": 0.996,
+          "brier": 0.10383665746056554,
+          "confusionMatrix": [
+            [
+              25,
+              0
+            ],
+            [
+              7,
+              3
+            ]
+          ]
+        },
+        {
+          "testSubject": "S6",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 33,
+          "stressWindows": 9,
+          "balancedAccuracy": 0.6458333333333334,
+          "macroF1": 0.6647314949201741,
+          "auc": 0.8981481481481481,
+          "brier": 0.13669449977475148,
+          "confusionMatrix": [
+            [
+              23,
+              1
+            ],
+            [
+              6,
+              3
+            ]
+          ]
+        },
+        {
+          "testSubject": "S7",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S8",
+            "S9"
+          ],
+          "windows": 25,
+          "stressWindows": 1,
+          "balancedAccuracy": 1.0,
+          "macroF1": 1.0,
+          "auc": 1.0,
+          "brier": 0.044504257850245435,
+          "confusionMatrix": [
+            [
+              24,
+              0
+            ],
+            [
+              0,
+              1
+            ]
+          ]
+        },
+        {
+          "testSubject": "S8",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S9"
+          ],
+          "windows": 27,
+          "stressWindows": 4,
+          "balancedAccuracy": 0.7282608695652174,
+          "macroF1": 0.7537993920972644,
+          "auc": 0.9673913043478262,
+          "brier": 0.07066340727857372,
+          "confusionMatrix": [
+            [
+              22,
+              1
+            ],
+            [
+              2,
+              2
+            ]
+          ]
+        },
+        {
+          "testSubject": "S9",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8"
+          ],
+          "windows": 33,
+          "stressWindows": 9,
+          "balancedAccuracy": 0.7708333333333333,
+          "macroF1": 0.7708333333333333,
+          "auc": 0.6805555555555555,
+          "brier": 0.20328740871591516,
+          "confusionMatrix": [
+            [
+              21,
+              3
+            ],
+            [
+              3,
+              6
+            ]
+          ]
+        },
+        {
+          "testSubject": "S10",
+          "trainingSubjects": [
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 36,
+          "stressWindows": 11,
+          "balancedAccuracy": 0.62,
+          "macroF1": 0.4618410700236035,
+          "auc": 0.5945454545454545,
+          "brier": 0.4414596006267175,
+          "confusionMatrix": [
+            [
+              6,
+              19
+            ],
+            [
+              0,
+              11
+            ]
+          ]
+        },
+        {
+          "testSubject": "S11",
+          "trainingSubjects": [
+            "S10",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 32,
+          "stressWindows": 11,
+          "balancedAccuracy": 0.8809523809523809,
+          "macroF1": 0.8398398398398399,
+          "auc": 1.0,
+          "brier": 0.13125208310860004,
+          "confusionMatrix": [
+            [
+              16,
+              5
+            ],
+            [
+              0,
+              11
+            ]
+          ]
+        },
+        {
+          "testSubject": "S13",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S14",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 33,
+          "stressWindows": 9,
+          "balancedAccuracy": 0.5625,
+          "macroF1": 0.3418803418803419,
+          "auc": 0.8564814814814815,
+          "brier": 0.32125737695394996,
+          "confusionMatrix": [
+            [
+              3,
+              21
+            ],
+            [
+              0,
+              9
+            ]
+          ]
+        },
+        {
+          "testSubject": "S14",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S15",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 36,
+          "stressWindows": 11,
+          "balancedAccuracy": 0.96,
+          "macroF1": 0.9375,
+          "auc": 1.0,
+          "brier": 0.08008404100502489,
+          "confusionMatrix": [
+            [
+              23,
+              2
+            ],
+            [
+              0,
+              11
+            ]
+          ]
+        },
+        {
+          "testSubject": "S15",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S16",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 36,
+          "stressWindows": 11,
+          "balancedAccuracy": 0.7,
+          "macroF1": 0.583011583011583,
+          "auc": 0.9309090909090909,
+          "brier": 0.20741165747191834,
+          "confusionMatrix": [
+            [
+              10,
+              15
+            ],
+            [
+              0,
+              11
+            ]
+          ]
+        },
+        {
+          "testSubject": "S16",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S17",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 36,
+          "stressWindows": 11,
+          "balancedAccuracy": 0.9199999999999999,
+          "macroF1": 0.8795986622073578,
+          "auc": 1.0,
+          "brier": 0.06211274893844444,
+          "confusionMatrix": [
+            [
+              21,
+              4
+            ],
+            [
+              0,
+              11
+            ]
+          ]
+        },
+        {
+          "testSubject": "S17",
+          "trainingSubjects": [
+            "S10",
+            "S11",
+            "S13",
+            "S14",
+            "S15",
+            "S16",
+            "S2",
+            "S3",
+            "S4",
+            "S5",
+            "S6",
+            "S7",
+            "S8",
+            "S9"
+          ],
+          "windows": 26,
+          "stressWindows": 8,
+          "balancedAccuracy": 0.9722222222222222,
+          "macroF1": 0.9563025210084033,
+          "auc": 1.0,
+          "brier": 0.05164002863329723,
+          "confusionMatrix": [
+            [
+              17,
+              1
+            ],
+            [
+              0,
+              8
+            ]
+          ]
+        }
+      ],
+      "heldOutWristTransfer": {
+        "windows": 96,
+        "stressWindows": 7,
+        "balancedAccuracy": 0.8948635634028892,
+        "macroF1": 0.7955582598113782,
+        "auc": 0.9502407704654896,
+        "brier": 0.07670721146766225,
+        "confusionMatrix": [
+          [
+            83,
+            6
+          ],
+          [
+            1,
+            6
+          ]
+        ]
+      }
+    }
+  },
+  "pixelWatchValidation": "Not performed; device and real-life domain shift unvalidated",
+  "accuracyClaimForUser": null
+}

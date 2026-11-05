@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "testedAt": "2026-11-06T01:50:58.7624983+09:00",
+  "powerShell": "Windows PowerShell 5.1",
+  "webTests": 109,
+  "receiverTests": 24,
+  "build": "passed",
+  "nodeBootstrap": "official ZIP SHA256 verified",
+  "freshRuntime": "no personal history",
+  "start": "passed",
+  "repeatStart": "passed",
+  "proxy": "passed",
+  "modelId": "wesad-population-rf60-v1",
+  "watchReinstalled": false,
+  "otherPhysicalPcTested": false,
+  "stop": "passed",
+  "originalRuntimeRestored": true
+}

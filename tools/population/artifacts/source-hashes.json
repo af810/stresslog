@@ -1,0 +1,22 @@
+[
+  {
+    "path": ".\\StressLog\\web\\src\\domain\\models\\wesad-v1.json",
+    "sha256": "cc9b301992234ea37dfc0de5c57781c0bc543f1feb5d1afdb0ff5671922e2899"
+  },
+  {
+    "path": ".\\StressLog\\web\\src\\domain\\populationFeatures.ts",
+    "sha256": "ff602f5da755842cca179f978feee0366e2366fa7e7c3b92fcbcde6b54f82faf"
+  },
+  {
+    "path": ".\\StressLog\\tools\\population\\prepare_wesad.py",
+    "sha256": "72b3bf0575e8089973eae134ea1551fe9070e503ee02b45a077c01fc79583361"
+  },
+  {
+    "path": ".\\StressLog\\tools\\population\\extract-features.mjs",
+    "sha256": "61a22108012fc6e557640035502c6d9bc28011748871413211de0051fd3f47a4"
+  },
+  {
+    "path": ".\\StressLog\\tools\\population\\train.py",
+    "sha256": "2c3112ccb6aa2278f2557589e9b63e77ca8787f26e14c3fc72f60f22deb251c1"
+  }
+]
