@@ -38,3 +38,4 @@ dist/
 *.pyc
 *.apk
 !releases/watch/stresslog-watch-v0.5.2.apk
+!releases/watch/stresslog-watch-ui-preview.apk

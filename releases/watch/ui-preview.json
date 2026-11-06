@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "packageId": "com.nishi.stresslog.watchprobe.preview",
+  "versionName": "0.5.5-ui-preview",
+  "versionCode": 12,
+  "file": "stresslog-watch-ui-preview.apk",
+  "bytes": 2580504,
+  "sha256": "25d4ccad5db9cb5047749d92a7154cce07fd16decedc642c9b07c3ab6cd5effc",
+  "sourceBranch": "ui/watch-refresh",
+  "measurementEnabled": false,
+  "requestedPermissions": [],
+  "replacesVerifiedMeasurementApp": false,
+  "acquisitionServiceSourceUnchanged": true,
+  "validation": {
+    "androidApi": 35,
+    "displayPixels": "384x384",
+    "densityDpi": 320,
+    "emulatorRoundConfiguration": true,
+    "actualWearOsFirmware": false,
+    "debugAndPreviewBuild": "passed",
+    "lintErrors": 0,
+    "lintWarnings": 11,
+    "previewStates": [
+      "ready",
+      "sending",
+      "waiting",
+      "wear",
+      "complete"
+    ],
+    "homeStartAndStop": "passed",
+    "continuousModeSelectionAndDisplay": "passed",
+    "fontScale1_2ActionReachable": "passed",
+    "measurementServicesRunning": 0,
+    "physicalWatchInstalled": false,
+    "physicalWatchTested": false,
+    "notes": "Phone-system-image launcher dialogs interrupted some automation. Normal dialog dismissal and app relaunch were used; no persistent system launcher setting was changed."
+  }
+}

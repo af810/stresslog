@@ -9,16 +9,18 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <application android:label="StressLog センサー診断" android:icon="@drawable/ic_probe"
-        android:theme="@android:style/Theme.Material.NoActionBar"
+    <application android:label="@string/watch_app_name" android:icon="@drawable/ic_probe"
+        android:theme="@style/StressLogWatchTheme"
         android:allowBackup="false" android:dataExtractionRules="@xml/data_extraction_rules"
         android:supportsRtl="true">
         <meta-data android:name="com.google.android.wearable.standalone" android:value="true" />
         <activity android:name=".LiveActivity" android:exported="false" android:taskAffinity="" />
         <activity android:name=".ReferenceProbeActivity" android:exported="false" android:taskAffinity="" />
         <activity android:name=".LiveSetupActivity" android:exported="true" android:permission="android.permission.DUMP" android:taskAffinity="" />
-        <service android:name=".LiveMeasurementService" android:exported="false" android:foregroundServiceType="health" />
+        <service android:name=".LiveMeasurementService" android:enabled="@bool/measurement_enabled" android:exported="false" android:foregroundServiceType="health" />
         <activity android:name=".ProbeActivity" android:exported="true" android:taskAffinity="">
+        </activity>
+        <activity android:name=".HomeActivity" android:exported="true" android:taskAffinity="">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

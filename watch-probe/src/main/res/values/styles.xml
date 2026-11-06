@@ -1,0 +1,19 @@
+<resources>
+    <style name="StressLogWatchTheme" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans-serif</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">#081114</item>
+        <item name="android:colorAccent">#ADEFD4</item>
+        <item name="android:textColorPrimary">#EFF7F4</item>
+        <item name="android:textColorSecondary">#98AFAE</item>
+        <item name="android:buttonStyle">@style/StressLogWatchButton</item>
+    </style>
+    <style name="StressLogWatchButton" parent="android:style/Widget.Material.Button">
+        <item name="android:backgroundTint">#17282C</item>
+        <item name="android:textColor">#ADEFD4</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textSize">13sp</item>
+        <item name="android:minHeight">44dp</item>
+    </style>
+</resources>
