@@ -20,7 +20,7 @@
         <service android:name=".LiveMeasurementService" android:enabled="@bool/measurement_enabled" android:exported="false" android:foregroundServiceType="health" />
         <activity android:name=".ProbeActivity" android:exported="true" android:taskAffinity="">
         </activity>
-        <activity android:name=".HomeActivity" android:exported="true" android:taskAffinity="">
+        <activity android:name=".HomeActivity" android:exported="true" android:taskAffinity="" android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

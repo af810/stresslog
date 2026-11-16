@@ -18,8 +18,8 @@ $tokenFile = Join-Path $script:PrivateDir 'token.txt'
 $addressFile = Join-Path $script:PrivateDir 'address.txt'
 if ((Test-Path -LiteralPath $cert) -or (Test-Path -LiteralPath $key)) {
     if (-not (Test-Path -LiteralPath $cert) -or -not (Test-Path -LiteralPath $key)) { throw 'Incomplete TLS configuration. See docs/SETUP.md before resetting it.' }
-    & $openssl x509 -in $cert -noout -checkip $LanAddress | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw 'PC address changed. Follow certificate reset instructions in docs/SETUP.md, then reconfigure the watch.' }
+    # v0.6 authenticates the exact paired TLS certificate, independent of a DHCP address.
+    # Keep the certificate/key across address changes; discovery never replaces trust.
     & $openssl x509 -in $cert -noout -checkend 0 | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Local TLS certificate expired. Reset it following docs/SETUP.md.' }
 } else {

@@ -10,14 +10,15 @@ import { CaptureStore,CaptureError,validateCaptureRequest } from './captures.mjs
 import {perceptionRecord} from '../../web/src/domain/perceptionRecord.ts';
 import {ObjectiveStore} from './objective-store.mjs';
 import {PopulationStore} from './population-store.mjs';
+import {startDiscovery} from './receiver-discovery.mjs';
 
-export function createBridge({key,cert,token,host='0.0.0.0',ingestPort=8787,localPort=8788,captureDirectory=null,objectiveDirectory=null,populationDirectory=null}) {
+export function createBridge({key,cert,token,host='0.0.0.0',ingestPort=8787,localPort=8788,captureDirectory=null,objectiveDirectory=null,populationDirectory=null,discoveryPort=null}) {
   if(typeof token!=='string' || !/^[a-f0-9]{64}$/.test(token))throw Error('32-byte token required');
   const state=new LiveState();
   const captures=captureDirectory?new CaptureStore(captureDirectory):null;
   const objective=captureDirectory?new ObjectiveStore(objectiveDirectory??path.join(captureDirectory,'objective'),captureDirectory):null;
   const population=new PopulationStore(populationDirectory??(captureDirectory?path.join(captureDirectory,'population'):null));
-  let populationTimer;
+  let populationTimer,discovery;
   const json=(res,status,value)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(value));};
   const ingest=https.createServer({key,cert,minVersion:'TLSv1.2'},(req,res)=>{
     if(req.method!=='POST' || req.url!=='/ingest')return json(res,404,{error:'Not found'});
@@ -79,10 +80,15 @@ export function createBridge({key,cert,token,host='0.0.0.0',ingestPort=8787,loca
     if(origin && !['http://localhost:5173','http://127.0.0.1:5173'].includes(origin))return json(res,403,{error:'Invalid origin'});
     if(req.method==='POST' && req.url==='/capture'){void capture(req,res);return;}
     if(req.method!=='GET')return json(res,405,{error:'Read only'});
-    if(req.url==='/status')return json(res,200,{...state.status(),capabilities:{captureArchive:Boolean(captures)}});
+    if(req.url==='/status')return json(res,200,{...state.status(),discovery:discovery?.summary()??null,capabilities:{captureArchive:Boolean(captures)}});
     if(req.url==='/window')return json(res,200,state.window());
     if(req.url==='/population-estimate'){
       void population.snapshot(state.window()).then(value=>json(res,200,value),()=>json(res,503,{error:'Population estimate unavailable'}));return;
+    }
+    if(req.url==='/population-history'||req.url.startsWith('/population-history?')){
+      const day=new URL(req.url,'http://localhost').searchParams.get('day');
+      if(day&&!/^\d{4}-\d{2}-\d{2}$/.test(day))return json(res,400,{error:'Invalid day'});
+      void population.history.snapshot(Date.now(),day??undefined).then(value=>json(res,200,value),()=>json(res,503,{error:'History unavailable'}));return;
     }
     if(req.url==='/objective-references'){
       if(!objective)return json(res,503,{error:'Objective reference store is not configured'});
@@ -101,12 +107,14 @@ export function createBridge({key,cert,token,host='0.0.0.0',ingestPort=8787,loca
     await new Promise((resolve,reject)=>{ingest.once('error',reject);ingest.listen(ingestPort,host,resolve);});
     try {await new Promise((resolve,reject)=>{local.once('error',reject);local.listen(localPort,'127.0.0.1',resolve);});}
     catch(e){ingest.close();throw e;}
+    if(discoveryPort!==null)try{discovery=await startDiscovery({token,ingestPort:ingest.address().port,port:discoveryPort,host});}
+    catch(e){await Promise.all([new Promise(r=>ingest.close(r)),new Promise(r=>local.close(r))]);throw e;}
     populationTimer=setInterval(()=>{void population.observe(state.window()).catch(()=>{});},15000).unref();
-  },async close(){clearInterval(populationTimer);await Promise.all([new Promise(r=>ingest.close(r)),new Promise(r=>local.close(r))]);await captures?.finish();await objective?.finish();await population.finish();}};
+  },async close(){clearInterval(populationTimer);await discovery?.close();await Promise.all([new Promise(r=>ingest.close(r)),new Promise(r=>local.close(r))]);await captures?.finish();await objective?.finish();await population.finish();}};
 }
 if(process.argv[1] && import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href) {
   const root=process.argv[2];if(!root)throw Error('Private runtime directory required');
-  const bridge=createBridge({key:fs.readFileSync(path.join(root,'key.pem')),cert:fs.readFileSync(path.join(root,'cert.pem')),token:fs.readFileSync(path.join(root,'token.txt'),'utf8').trim(),captureDirectory:path.join(root,'captures'),objectiveDirectory:path.join(root,'objective'),populationDirectory:path.join(root,'population')});
+  const bridge=createBridge({key:fs.readFileSync(path.join(root,'key.pem')),cert:fs.readFileSync(path.join(root,'cert.pem')),token:fs.readFileSync(path.join(root,'token.txt'),'utf8').trim(),captureDirectory:path.join(root,'captures'),objectiveDirectory:path.join(root,'objective'),populationDirectory:path.join(root,'population'),discoveryPort:8789});
   await bridge.start();console.log('StressLog encrypted watch receiver ready: TLS 8787 / loopback 8788');
   for(const sig of ['SIGINT','SIGTERM'])process.on(sig,async()=>{await bridge.close();process.exit(0);});
 }

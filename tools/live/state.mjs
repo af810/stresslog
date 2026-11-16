@@ -6,7 +6,7 @@ export class LiveState {
   lastSentAt=null; lastPpgReceivedAt=null; droppedEvents=0; registrations={ppg:false,heartRate:false,acceleration:false}; battery=null;
   lastPpgLagMs=0;
   lastPpgNs=null;streamErrors=0;
-  worn=null;
+  worn=null;lastWearNs=null;
   accept(batch, now=Date.now()) {
     if(!batch || typeof batch.sessionId!=='string' || !/^[a-zA-Z0-9-]{8,80}$/.test(batch.sessionId) ||
       typeof batch.model!=='string' || batch.model.length>100 || !Number.isSafeInteger(batch.sequence) || batch.sequence<0 ||
@@ -17,11 +17,16 @@ export class LiveState {
         e.values.some(v=>typeof v!=='number' || !Number.isFinite(v))) throw Error('Invalid event');
       return {sensorStringType:e.sensorStringType,sensorTimestampNs:e.sensorTimestampNs,values:e.values.slice(),accuracy:Number.isInteger(e.accuracy)?e.accuracy:0};
     });
+    const wear=batch.wearState;
+    if(wear!==undefined&&wear!==null&&(!wear||![0,1].includes(wear.value)||typeof wear.sensorTimestampNs!=='string'||!/^\d{1,20}$/.test(wear.sensorTimestampNs)||
+      typeof batch.sentElapsedNs!=='string'||!/^\d{1,20}$/.test(batch.sentElapsedNs)||BigInt(wear.sensorTimestampNs)>BigInt(batch.sentElapsedNs)))throw Error('Invalid wear state');
     if(batch.sessionId===this.sessionId && batch.sequence<=this.lastSequence) return false;
-    if(batch.sessionId!==this.sessionId) {this.events=[];this.lastSequence=-1;this.lastPpgReceivedAt=null;this.lastPpgNs=null;this.streamErrors=0;this.worn=null;}
+    if(batch.sessionId!==this.sessionId) {this.events=[];this.lastSequence=-1;this.lastPpgReceivedAt=null;this.lastPpgNs=null;this.streamErrors=0;this.worn=null;this.lastWearNs=null;}
     for(const e of checked)if(e.sensorStringType==='android.sensor.low_latency_offbody_detect') {
-      if(e.values[0]===1)this.worn=true;else if(e.values[0]===0)this.worn=false;
+      const stamp=BigInt(e.sensorTimestampNs);
+      if([0,1].includes(e.values[0])&&(this.lastWearNs===null||stamp>this.lastWearNs)){this.worn=e.values[0]===1;this.lastWearNs=stamp;}
     }
+    if(wear&&(this.lastWearNs===null||BigInt(wear.sensorTimestampNs)>this.lastWearNs)){this.worn=wear.value===1;this.lastWearNs=BigInt(wear.sensorTimestampNs);}
     for(const e of checked)if(e.sensorStringType==='com.google.wear.sensor.ppg'){
       const stamp=BigInt(e.sensorTimestampNs);
       if(this.lastPpgNs!==null && stamp<=this.lastPpgNs)this.streamErrors++;

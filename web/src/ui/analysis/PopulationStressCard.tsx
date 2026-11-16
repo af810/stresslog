@@ -1,5 +1,6 @@
 import {useEffect,useState} from 'react';
 import {readPopulationSnapshot,POPULATION_MODEL_INFO,type PopulationSnapshot} from '../../domain/populationStress';
+import {StressTimeline} from './StressTimeline';
 
 export function PopulationStressCard({now}:{now:number}){
   const [snapshot,setSnapshot]=useState<PopulationSnapshot|null>(null),[error,setError]=useState('');
@@ -20,7 +21,7 @@ export function PopulationStressCard({now}:{now:number}){
   const live=snapshot?.current&&Math.abs(now-snapshot.current.observation.at)<=15000&&!error?snapshot.current:null;
   const shown=live??snapshot?.last??null;
   const time=shown?new Intl.DateTimeFormat('ja-JP',{timeZone:'Asia/Tokyo',year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(shown.observation.at):null;
-  return <div className="card live-prediction">
+  return <><StressTimeline/><div className="card live-prediction">
     <div className="live-card-heading"><h3>ストレス推定</h3><span className="live-badge">汎用モデル・精度未検証</span></div>
     <p className="live-hint">個人の事前データ・体感入力・基準づくりは不要です。</p>
     <p className="live-progress-heading"><strong>{live?'計測中の推定値':shown?'直近の保存データによる推定値':'モデル準備完了・計測待ち'}</strong></p>
@@ -42,5 +43,5 @@ export function PopulationStressCard({now}:{now:number}){
       <p><a href="https://doi.org/10.1145/3242969.3242985" target="_blank" rel="noreferrer">WESAD原著論文</a> · <a href="https://ubi29.informatik.uni-siegen.de/usi/data_wesad.html" target="_blank" rel="noreferrer">データセットと利用条件</a> · <a href="https://doi.org/10.1371/journal.pone.0076585" target="_blank" rel="noreferrer">脈波検出の参考文献</a></p>
       <p>モデル {POPULATION_MODEL_INFO.id}。データセットの条件に従い、科学研究・非商用用途で利用してください。</p>
     </details>
-  </div>;
+  </div></>;
 }

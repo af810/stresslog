@@ -15,12 +15,13 @@ class HomeActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var connection: TextView
     private lateinit var primary: Button
+    private var launchHandled = false
     private val refresh = object : Runnable {
         override fun run() {
             val ack = LiveMeasurementService.lastAcknowledgedAt
             val configured = getSharedPreferences("live", MODE_PRIVATE).contains("receiver")
             val connected = ack != null && SystemClock.elapsedRealtime() - ack < 15_000L
-            primary.text = if (!BuildConfig.WATCH_UI_PREVIEW && WatchUi.measurementRunning(this@HomeActivity)) "計測をひらく" else "7分でチェック"
+            primary.text = if (!BuildConfig.WATCH_UI_PREVIEW && WatchUi.measurementRunning(this@HomeActivity)) "計測をひらく" else "長時間計測を開始"
             connection.text = when {
                 BuildConfig.WATCH_UI_PREVIEW -> "時計 → Wi-Fi → PC"
                 connected -> "● PCへデータを送信中"
@@ -41,9 +42,9 @@ class HomeActivity : Activity() {
         WatchUi.gap(column, 7)
         WatchUi.text(column, "時計のデータから\nストレス反応をチェック", 11f, WatchUi.muted)
         WatchUi.gap(column, 12)
-        primary = WatchUi.button(column, "7分でチェック", primary = true) {
+        primary = WatchUi.button(column, "長時間計測を開始", primary = true) {
             val open = Intent(this, LiveActivity::class.java)
-            if (BuildConfig.WATCH_UI_PREVIEW || !WatchUi.measurementRunning(this)) open.putExtra("startLimitedCapture", true)
+            if (BuildConfig.WATCH_UI_PREVIEW || !WatchUi.measurementRunning(this)) open.putExtra("startContinuousCapture", true)
             startActivity(open)
         }
         WatchUi.gap(column, 24)
@@ -65,6 +66,17 @@ class HomeActivity : Activity() {
         WatchUi.previewLabel(column)
         WatchUi.text(column, "v${BuildConfig.VERSION_NAME}", 9f, WatchUi.muted)
     }
-    override fun onResume() { super.onResume(); handler.removeCallbacks(refresh); handler.post(refresh) }
+    override fun onResume() {
+        super.onResume(); handler.removeCallbacks(refresh); handler.post(refresh)
+        val prefs = getSharedPreferences("live", MODE_PRIVATE)
+        if (!launchHandled && intent.action == Intent.ACTION_MAIN) {
+            launchHandled = true
+            if (!BuildConfig.WATCH_UI_PREVIEW && prefs.getBoolean("autoStartOnOpen", false) && !prefs.getBoolean("autoStartBlocked", false) &&
+                prefs.contains("receiver") && !WatchUi.measurementRunning(this)) {
+                startActivity(Intent(this, LiveActivity::class.java).putExtra("startContinuousCapture", true))
+            }
+        }
+    }
     override fun onPause() { handler.removeCallbacks(refresh); super.onPause() }
+    override fun onNewIntent(intent: Intent?) { super.onNewIntent(intent); setIntent(intent); launchHandled = false }
 }

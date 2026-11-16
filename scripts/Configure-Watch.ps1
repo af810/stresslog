@@ -1,13 +1,22 @@
-param([Parameter(Mandatory=$true)][string]$DeviceAddress, [string]$PairAddress, [switch]$InstallVerifiedApk)
+param([string]$DeviceAddress, [string]$PairAddress, [switch]$InstallVerifiedApk)
 . "$PSScriptRoot\Environment.ps1"
 $adb = Get-StressLogAdb
-if ($DeviceAddress -notmatch '^\d{1,3}(\.\d{1,3}){3}:\d{1,5}$') { throw 'Use the watch IPv4 address and CONNECTION port.' }
+if (-not $DeviceAddress) {
+    $found = @(& $adb devices | Where-Object { $_ -match '^\S+\s+device$' } | ForEach-Object { ($_ -split '\s+')[0] })
+    if ($found.Count -eq 1) { $DeviceAddress = $found[0] }
+    else {
+        $services = @(& $adb mdns services | Where-Object { $_ -match '_adb-tls-connect\._tcp\s+(\d{1,3}(?:\.\d{1,3}){3}:\d{1,5})' } | ForEach-Object { [regex]::Match($_,'(\d{1,3}(?:\.\d{1,3}){3}:\d{1,5})\s*$').Groups[1].Value } | Select-Object -Unique)
+        if ($services.Count -eq 1) { $DeviceAddress = $services[0] }
+    }
+}
+if (-not $DeviceAddress) { throw 'No single watch was discovered. Enable Wireless debugging, or pass -DeviceAddress. ADB is only needed for setup/update, not daily measurement.' }
+if ($DeviceAddress -notmatch '^\d{1,3}(\.\d{1,3}){3}:\d{1,5}$' -and $DeviceAddress -notmatch '^adb-[A-Za-z0-9_-]+\._adb-tls-connect\._tcp$') { throw 'Use the watch IPv4 address and CONNECTION port.' }
 if ($PairAddress) {
     if ($PairAddress -notmatch '^\d{1,3}(\.\d{1,3}){3}:\d{1,5}$') { throw 'Invalid PAIRING address.' }
     & $adb pair $PairAddress
     if ($LASTEXITCODE -ne 0) { throw 'ADB pairing failed.' }
 }
-& $adb connect $DeviceAddress
+if ($DeviceAddress -match ':') { & $adb connect $DeviceAddress }
 & $adb -s $DeviceAddress get-state
 if ($LASTEXITCODE -ne 0) { throw 'Watch is not connected. Check Wireless debugging.' }
 $features = & $adb -s $DeviceAddress shell pm list features
@@ -26,4 +35,4 @@ $token = (Get-Content -LiteralPath (Join-Path $script:PrivateDir 'token.txt') -R
 # Suppress am output: it echoes the complete intent, including credentials.
 $setupResult = & $adb -s $DeviceAddress shell am start -n com.nishi.stresslog.watchprobe/.LiveSetupActivity --es receiver "https://${lan}:8787/ingest" --es certificate $encoded --es authToken $token --ez resume false 2>&1
 if ($LASTEXITCODE -ne 0 -or ($setupResult -join '') -match 'Error|Exception|Permission Denial') { throw 'Watch configuration failed. Credentials were not printed.' }
-Write-Host 'Configured. On the watch, open StressLog > automatic measurement > 7-minute measurement. Allow sensor/notification permissions if requested.'
+Write-Host 'Configured. On the watch choose Continuous to measure until the battery cutoff, or 7 minutes for a short check. Daily measurement does not require ADB.'

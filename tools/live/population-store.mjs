@@ -3,11 +3,12 @@ import path from 'node:path';
 import {randomUUID} from 'node:crypto';
 import {extractPopulationObservation} from '../../web/src/domain/populationFeatures.ts';
 import {parsePopulationObservation,predictPopulationStress,POPULATION_MODEL_INFO} from '../../web/src/domain/populationStress.ts';
+import {DailyHistory} from './daily-history.mjs';
 
 /** Latest result only. This is not a baseline, training set or personal model. */
 export class PopulationStore {
   last=null;current=null;reason='時計で計測を開始してください';error=null;key=null;job=null;lastSavedAt=0;
-  constructor(directory=null){this.directory=directory?path.resolve(directory):null;this.ready=this.initialize();}
+  constructor(directory=null){this.directory=directory?path.resolve(directory):null;this.history=new DailyHistory(this.directory?path.join(this.directory,'daily'):null);this.ready=this.initialize();}
   async initialize(){
     if(!this.directory)return;
     try{
@@ -47,6 +48,7 @@ export class PopulationStore {
       const prediction=predictPopulationStress(observation.features);
       if(!prediction){this.reason='心拍・体動の値を確認しています';return;}
       this.current={observation,prediction,source:'live'};
+      await this.history.record(this.current);
       if(!this.last||observation.at>=this.last.observation.at)this.last=this.current;
       if(now-this.lastSavedAt>=30000)await this.save(now);
     })();
@@ -65,5 +67,5 @@ export class PopulationStore {
     const prediction=predictPopulationStress(observation.features);if(!prediction)return false;
     this.last={observation,prediction,source:'historical'};await this.save();return true;
   }
-  async finish(){await this.ready;await this.job;await this.save();}
+  async finish(){await this.ready;await this.job;await this.history.writes;await this.save();}
 }

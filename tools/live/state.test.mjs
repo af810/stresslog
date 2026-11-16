@@ -37,3 +37,12 @@ test('worn state is retained even after its on-change event leaves the rolling w
   s.accept(batch(1,[ppg('400000000000')]),100100);assert.equal(s.status(100100).worn,true);
   s.accept(batch(2,[{sensorStringType:'android.sensor.low_latency_offbody_detect',sensorTimestampNs:'400000000001',values:[0]}]),100200);assert.equal(s.status(100200).worn,false);
 });
+test('retained wear metadata restores a restarted receiver without inventing a sensor event',()=>{
+ const s=new LiveState();s.accept({...batch(),wearState:{value:1,sensorTimestampNs:'1000000000'}},100000);
+ assert.equal(s.status(100000).worn,true);assert.equal(s.events.length,1);
+ s.accept({...batch(1),wearState:{value:0,sensorTimestampNs:'10500000000'}},100001);
+ assert.equal(s.status(100001).worn,false);
+ s.accept({...batch(2),wearState:{value:1,sensorTimestampNs:'1000000000'}},100002);
+ assert.equal(s.status(100002).worn,false);
+ assert.throws(()=>s.accept({...batch(3),wearState:{value:1,sensorTimestampNs:'999000000000'}}));
+});

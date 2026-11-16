@@ -1,5 +1,14 @@
 # 実機確認済み時計アプリ
 
+## v0.6.0 長時間モード
+
+`stresslog-watch-v0.6.0.apk` は長時間計測・低電池停止・PC自動探索の通常版です。
+対応ソースは `watch-probe/`。バージョン・SHA-256は `long-session.json`、確認範囲は `docs/LONG_SESSION_VALIDATION.json`。
+更新は `scripts/Install-LongSession.ps1`。毎日の利用にはインストール・ADB接続は不要。
+個人のPC接続キー・計測履歴はAPKに含まれません。初回登録は別途行います。
+
+## v0.5.2 過去の確認済み版（保持）
+
 - ファイル: `stresslog-watch-v0.5.2.apk`
 - パッケージ: `com.nishi.stresslog.watchprobe`
 - versionName: `0.5.2` / versionCode: `9`

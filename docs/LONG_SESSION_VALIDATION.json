@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-11-17",
+  "versionName": "0.6.0",
+  "versionCode": 13,
+  "modelId": "wesad-population-rf60-v1",
+  "modelChanged": false,
+  "tests": {
+    "web": 109,
+    "receiver": 29,
+    "watchPolicy": 2,
+    "webBuild": "passed",
+    "watchBuild": "passed",
+    "androidLintErrors": 0,
+    "watchPolicyRunner": "JUnitCore; Gradle worker failed on Japanese path"
+  },
+  "physicalWatch": {
+    "installed": true,
+    "originalDataPreserved": true,
+    "liveReceiveVerified": true,
+    "currentEstimateVerified": true,
+    "historyAndCsvRowsMatch": true,
+    "historyError": null,
+    "continuousSessionCurrentlyRunning": true,
+    "lowBatteryCutoffPhysicallyExhausted": false,
+    "longTermBatteryLifeVerified": false,
+    "stressAccuracyVerified": false
+  },
+  "reconnect": {
+    "automaticReconnectAfterPcRestart": true,
+    "sameWatchSession": true,
+    "wearStateRestored": true,
+    "newEstimateAndHistoryResumed": true,
+    "historyPreserved": true,
+    "historyError": null,
+    "deliberateReceiverPauseSeconds": 12,
+    "adbUsedForReconnect": false,
+    "dataDropped": 0,
+    "streamErrors": 0
+  },
+  "discovery": {
+    "authenticatedDiscoveryOnPhysicalWatch": true,
+    "authenticatedUdpReplyCounterIncreased": true,
+    "testUsedUnreachableLoopback": true,
+    "pairedCertificateUnchanged": true,
+    "restoredOnFailure": true
+  },
+  "limitations": [
+    "Only received and quality-accepted intervals are logged.",
+    "Full-day operation and real 20% shutdown have not been physically tested.",
+    "Automatic boot restart and unlimited watch-side offline recording are not implemented.",
+    "Personal scores and raw telemetry are excluded from this public report."
+  ]
+}

@@ -11,8 +11,8 @@ android {
         applicationId = "com.nishi.stresslog.watchprobe"
         minSdk = 30
         targetSdk = 35
-        versionCode = 12
-        versionName = "0.5.5"
+        versionCode = 13
+        versionName = "0.6.0"
         buildConfigField("boolean", "WATCH_UI_PREVIEW", "false")
         resValue("bool", "measurement_enabled", "true")
         resValue("string", "watch_app_name", "StressLog")
@@ -34,3 +34,4 @@ android {
     }
     kotlinOptions { jvmTarget = "17" }
 }
+dependencies { testImplementation("junit:junit:4.13.2") }

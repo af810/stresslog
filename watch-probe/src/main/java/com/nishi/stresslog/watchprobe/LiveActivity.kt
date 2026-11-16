@@ -13,6 +13,8 @@ import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
+import android.os.BatteryManager
+import android.widget.Switch
 
 class LiveActivity : Activity() {
     private val handler = Handler(Looper.getMainLooper())
@@ -25,7 +27,7 @@ class LiveActivity : Activity() {
     private lateinit var shortMode: Button
     private lateinit var continuousMode: Button
     private lateinit var technical: TextView
-    private var limitedCapture = true
+    private var limitedCapture = false
     private var localMessage: String? = null
     private var previewState = "ready"
     private val refresh = object : Runnable {
@@ -47,8 +49,8 @@ class LiveActivity : Activity() {
         stop = WatchUi.button(column, "計測を終了") {
             if (BuildConfig.WATCH_UI_PREVIEW) previewState = "complete"
             else {
-                stopService(Intent(this, LiveMeasurementService::class.java))
-                getSharedPreferences("live", MODE_PRIVATE).edit().putString("status", "停止しました").apply()
+                startService(Intent(this, LiveMeasurementService::class.java).setAction("STOP"))
+                getSharedPreferences("live", MODE_PRIVATE).edit().putString("status", "停止しました").putBoolean("autoStartBlocked", true).apply()
             }
             localMessage = null; render()
         }
@@ -75,18 +77,35 @@ class LiveActivity : Activity() {
         technical = WatchUi.text(column, "", 10f, WatchUi.muted).apply { visibility = View.GONE }
         WatchUi.gap(column, 8)
         WatchUi.previewLabel(column)
+        val preferences = getSharedPreferences("live", MODE_PRIVATE)
+        val auto = Switch(this).apply {
+            text = "起動時に自動開始"; textSize = 12f; setTextColor(WatchUi.white)
+            isChecked = preferences.getBoolean("autoStartOnOpen", false)
+            setOnCheckedChangeListener { _, enabled -> preferences.edit().putBoolean("autoStartOnOpen", enabled).putBoolean("autoStartBlocked", false).apply() }
+        }
+        column.addView(auto, LinearLayout.LayoutParams(-1, WatchUi.dp(this, 52)))
+        WatchUi.gap(column, 8)
+        var threshold = LongRunPolicy.threshold(preferences.getInt("batteryStopPercent", 20))
+        lateinit var batterySetting: Button
+        batterySetting = WatchUi.button(column, "電池${threshold}％で停止") {
+            threshold = when (threshold) { 10 -> 20; 20 -> 30; else -> 10 }
+            preferences.edit().putInt("batteryStopPercent", threshold).apply()
+            batterySetting.text = "電池${threshold}％で停止"
+        }
+        WatchUi.gap(column, 8)
+        WatchUi.text(column, "停止残量の変更は次の計測から。\n手動停止・電池による停止後は、\n開始ボタンで再開してください。", 10f, WatchUi.muted)
         render()
     }
 
     private fun render() {
         val preview = BuildConfig.WATCH_UI_PREVIEW
         val prefs = getSharedPreferences("live", MODE_PRIVATE)
-        val saved = prefs.getString("status", "停止中").orEmpty()
+        val saved = LiveMeasurementService.liveStatus ?: prefs.getString("status", "停止中").orEmpty()
         val running = if (preview) previewState in listOf("sending", "waiting", "wear") else WatchUi.measurementRunning(this)
         val ack = LiveMeasurementService.lastAcknowledgedAt
         val fresh = if (preview) previewState == "sending" else ack != null && SystemClock.elapsedRealtime() - ack <= 15_000L
         val wearing = if (preview) previewState == "wear" else saved.startsWith("装着待ち")
-        val complete = if (preview) previewState == "complete" else !running && (saved.contains("終了しました") || saved == "停止しました")
+        val complete = if (preview) previewState == "complete" else !running && (saved.contains("終了しました") || saved.contains("停止しました"))
         val remaining = if (preview) {
             if (running && limitedCapture) 324L else null
         } else LiveMeasurementService.stopAtElapsed?.let { maxOf(0L, (it - SystemClock.elapsedRealtime()) / 1000L) }
@@ -97,7 +116,7 @@ class LiveActivity : Activity() {
             wearing -> "装着を待っています"
             running && fresh -> "● PCへ送信中"
             running -> "PCへの接続待ち"
-            complete -> "計測が終わりました"
+            complete -> if (saved.startsWith("電池")) "電池残量で停止" else "計測が終わりました"
             !configured -> "PCの設定が必要です"
             else -> "計測の準備"
         }
@@ -135,9 +154,9 @@ class LiveActivity : Activity() {
             running && fresh -> "文字盤に戻って大丈夫です。"
             running -> "PCのアプリと時計のWi-Fiを\n確認してください。"
             !configured -> "PCで接続設定を済ませてから\n計測を始めてください。"
-            complete -> "結果はPCのアプリで確認できます。"
+            complete -> if (saved.startsWith("電池")) "${saved}\n充電してから再開してください。" else "結果はPCのアプリで確認できます。"
             limitedCapture -> "7分たつと自動で終了します。"
-            else -> "終了ボタンを押すまで続きます。\n電池残量にご注意ください。"
+            else -> "電池${LongRunPolicy.threshold(prefs.getInt("batteryStopPercent", 20))}％以下で停止します。\nPCへは自動で再接続します。"
         }
         technical.text = if (preview) "プレビュー表示・実測データなし" else saved
     }
@@ -150,6 +169,11 @@ class LiveActivity : Activity() {
             localMessage = "最初にPCで接続を設定してください。"; render(); return
         }
         val needed = mutableListOf<String>()
+        val battery = (getSystemService(BATTERY_SERVICE) as BatteryManager).getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        val threshold = getSharedPreferences("live", MODE_PRIVATE).getInt("batteryStopPercent", 20)
+        if (battery !in 0..100 || LongRunPolicy.lowBattery(battery, threshold)) {
+            localMessage = "電池残量が少ないため開始できません。充電してください。"; render(); return
+        }
         if (checkSelfPermission(Manifest.permission.BODY_SENSORS) != PackageManager.PERMISSION_GRANTED) needed += Manifest.permission.BODY_SENSORS
         if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) needed += Manifest.permission.POST_NOTIFICATIONS
         if (needed.isNotEmpty()) { requestPermissions(needed.toTypedArray(), 10); return }
@@ -172,6 +196,9 @@ class LiveActivity : Activity() {
     }
     override fun onResume() {
         super.onResume(); handler.removeCallbacks(refresh); handler.post(refresh)
+        if (intent.getBooleanExtra("startContinuousCapture", false)) {
+            intent.removeExtra("startContinuousCapture"); limitedCapture = false; startMeasurement()
+        }
         if (intent.getBooleanExtra("startLimitedCapture", false)) {
             intent.removeExtra("startLimitedCapture")
             limitedCapture = true

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "packageId": "com.nishi.stresslog.watchprobe",
+  "versionName": "0.6.0",
+  "versionCode": 13,
+  "file": "stresslog-watch-v0.6.0.apk",
+  "bytes": 2482258,
+  "sha256": "6bc61e05ea9e082354f27d13abfb6cb0962496c92070fe7cdfe7311466dc8486",
+  "sourceBranch": "feature/long-session",
+  "measurementEnabled": true,
+  "batteryStopDefaultPercent": 20,
+  "personalBaseline": false,
+  "subjectiveInputs": false
+}

@@ -4,9 +4,11 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.app.AlarmManager
 import android.app.Service
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.hardware.Sensor
 import android.hardware.SensorEvent
@@ -27,10 +29,12 @@ import android.os.SystemClock
 import android.util.Base64
 import org.json.JSONArray
 import org.json.JSONObject
-import java.net.URL
 import java.io.ByteArrayOutputStream
+import java.net.URL
 import java.security.KeyStore
+import java.security.MessageDigest
 import java.security.cert.CertificateFactory
+import java.security.cert.X509Certificate
 import java.util.UUID
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -38,315 +42,219 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.zip.GZIPOutputStream
 import javax.net.ssl.HttpsURLConnection
 import javax.net.ssl.SSLContext
-import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.SSLSocketFactory
+import javax.net.ssl.TrustManagerFactory
 
-/** User-started, visible health foreground service. No automatic start at boot. */
+/** Visible user-started service. No boot start, no off-body sensor reconfiguration, no cross-thread wait locks. */
 class LiveMeasurementService : Service(), SensorEventListener {
     companion object {
         internal const val SENDING_STATUS = "PCへ送信中"
-        @Volatile internal var lastAcknowledgedAt: Long? = null
-            private set
-        @Volatile internal var stopAtElapsed: Long? = null
-            private set
+        @Volatile internal var lastAcknowledgedAt: Long? = null; private set
+        @Volatile internal var stopAtElapsed: Long? = null; private set
+        @Volatile internal var liveStatus: String? = null; private set
+        @Volatile internal var batteryPercent = -1; private set
     }
     private data class Sample(val type: String, val time: Long, val values: FloatArray, val accuracy: Int) {
-        fun json(): JSONObject {
-            val array = JSONArray()
-            values.forEach { array.put(it.toDouble()) }
-            return JSONObject().put("sensorStringType", type).put("sensorTimestampNs", time.toString())
-                .put("values", array).put("accuracy", accuracy)
-        }
+        fun json() = JSONObject().put("sensorStringType", type).put("sensorTimestampNs", time.toString())
+            .put("values", JSONArray().also { a -> values.forEach { a.put(it.toDouble()) } }).put("accuracy", accuracy)
     }
-    private data class ConnectionSettings(val receiver: String, val certificate: String, val token: String)
-    private var connectionSettings: ConnectionSettings? = null
-    private var socketFactory: SSLSocketFactory? = null
-    private var useCompression = true
     private lateinit var sensors: SensorManager
     private lateinit var connectivity: ConnectivityManager
     private var sensorThread: HandlerThread? = null
     private var sensorHandler: Handler? = null
-    private var ppgSensor: Sensor? = null
-    private var heartSensor: Sensor? = null
-    private var accelerationSensor: Sensor? = null
-    private val lifecycleLock = Any()
-    @Volatile private var offBodyPaused = false
-    @Volatile private var lastWearValue = -1
-    private var wearCanWake = false
-    private var wifiRequested = false
-    private val pauseIfUnworn = Runnable {
-        synchronized(lifecycleLock) {
-            if (active && lastWearValue == 0 && !offBodyPaused) pauseForWear()
-        }
-    }
     private val executor = Executors.newSingleThreadScheduledExecutor()
     private val queue = java.util.ArrayDeque<Sample>()
-    private val mainHandler = Handler(Looper.getMainLooper())
-    private var finalStatus = "停止中"
-    private var stopAlarm: PendingIntent? = null
-    private val stopAfterCapture = Runnable { finalStatus = "7分間の計測が終了しました"; stopSelf() }
+    private val main = Handler(Looper.getMainLooper())
+    @Volatile private var active = false
+    @Volatile private var stopping = false
     @Volatile private var network: Network? = null
+    @Volatile private var callback: ConnectivityManager.NetworkCallback? = null
+    @Volatile private var finalStatus = "停止中"
     private var wakeLock: PowerManager.WakeLock? = null
     private var wakeRenewedAt = 0L
-    @Volatile private var active = false
-    private val dropped = AtomicLong()
-    private var sent = 0L
-    private var sequence = 0L
-    private var pendingRows: JSONArray? = null
-    private var pendingSequence = 0L
-    private var retryDelayMs = 6000L
-    private var nextAttemptAt = 0L
+    private var batteryRegistered = false
+    private var stopPercent = 20
     private val sessionId = UUID.randomUUID().toString()
+    private val dropped = AtomicLong()
+    private var sequence = 0L
+    private var sent = 0L
+    private var pending: JSONArray? = null
+    private var pendingSequence = 0L
+    private var retryDelay = 6000L
+    private var nextAttempt = 0L
+    private var lastDiscovery = -60000L
+    private var receiver = ""
+    private var token = ""
+    private var pinnedCertificate = byteArrayOf()
+    private var certificate: X509Certificate? = null
+    private var tls: SSLSocketFactory? = null
     private var registrations = JSONObject()
-    @Volatile private var networkCallback: ConnectivityManager.NetworkCallback? = null
+    private var lastPersistedAt = 0L
+    @Volatile private var latestWear: Sample? = null
+    private val endCapture = Runnable { end("7分間の計測が終了しました") }
+    private val battery = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != Intent.ACTION_BATTERY_CHANGED) return
+            val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+            val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+            batteryPercent = if (level >= 0 && scale > 0) level * 100 / scale else -1
+            if (active && LongRunPolicy.lowBattery(batteryPercent, stopPercent)) end("電池${stopPercent}％以下のため停止しました")
+        }
+    }
     override fun onBind(intent: Intent?): IBinder? = null
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == "STOP") { finalStatus = "停止しました"; stopSelf(); return START_NOT_STICKY }
-        if (intent?.action == "LIMIT_EXPIRED") {
-            if (!active || captureExpired()) { finalStatus = "7分間の計測が終了しました"; stopSelf() }
-            return START_NOT_STICKY
-        }
-        if (active) {
-            try { setCaptureLimit(intent?.getBooleanExtra("limitedCapture", false) == true) }
-            catch (e: RuntimeException) { finalStatus = "自動停止の予約に失敗: ${e.javaClass.simpleName}"; stopSelf() }
-            return START_NOT_STICKY
-        }
-        val notifications = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-        notifications.createNotificationChannel(NotificationChannel("live", "StressLog 自動計測", NotificationManager.IMPORTANCE_LOW))
+        if (BuildConfig.WATCH_UI_PREVIEW) { stopSelf(); return START_NOT_STICKY }
+        if (intent?.action == "STOP") { end("停止しました"); return START_NOT_STICKY }
+        if (active || stopping) return START_NOT_STICKY // Opening the app never resets a running session.
+        val prefs = getSharedPreferences("live", MODE_PRIVATE)
+        stopPercent = LongRunPolicy.threshold(prefs.getInt("batteryStopPercent", 20))
+        val manager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        manager.createNotificationChannel(NotificationChannel("live", "StressLog 計測", NotificationManager.IMPORTANCE_LOW))
         val open = PendingIntent.getActivity(this, 0, Intent(this, LiveActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         val stop = PendingIntent.getService(this, 1, Intent(this, LiveMeasurementService::class.java).setAction("STOP"), PendingIntent.FLAG_IMMUTABLE)
-        val notification = Notification.Builder(this, "live").setSmallIcon(com.nishi.stresslog.watchprobe.R.drawable.ic_probe)
-            .setContentTitle("StressLog 計測中").setContentText("PPG・心拍・体動を登録済みPCへ送信")
-            .setContentIntent(open).addAction(Notification.Action.Builder(null, "停止", stop).build()).setOngoing(true).build()
+        val notification = Notification.Builder(this, "live").setSmallIcon(R.drawable.ic_probe).setContentTitle("StressLog 計測中")
+            .setContentText("電池${stopPercent}％で停止 · 登録済みPCへ送信").setContentIntent(open)
+            .addAction(Notification.Action.Builder(null, "停止", stop).build()).setOngoing(true).build()
         try {
-            if (Build.VERSION.SDK_INT >= 34) startForeground(20, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH)
-            else startForeground(20, notification)
-            active = true
+            if (Build.VERSION.SDK_INT >= 34) startForeground(20, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_HEALTH) else startForeground(20, notification)
+            receiver = prefs.getString("receiver", "").orEmpty()
+            token = prefs.getString("token", "").orEmpty()
+            require(URL(receiver).protocol == "https" && token.matches(Regex("[a-f0-9]{64}")))
+            val cert = CertificateFactory.getInstance("X.509").generateCertificate(Base64.decode(prefs.getString("certificate", ""), Base64.DEFAULT).inputStream())
+            pinnedCertificate = cert.encoded
+            certificate = cert as X509Certificate
+            certificate!!.checkValidity()
+            val store = KeyStore.getInstance(KeyStore.getDefaultType()).apply { load(null); setCertificateEntry("pc", cert) }
+            val trust = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).apply { init(store) }
+            tls = SSLContext.getInstance("TLS").apply { init(null, trust.trustManagers, null) }.socketFactory
+            active = true; lastAcknowledgedAt = null; liveStatus = "接続を準備しています"
+            val initialBattery = registerReceiver(battery, IntentFilter(Intent.ACTION_BATTERY_CHANGED)); batteryRegistered = true
+            // The sticky Intent is available immediately; onReceive itself may be queued.
+            // Do not mistake a callback that has not run yet for an unreadable battery.
+            initialBattery?.let { battery.onReceive(this, it) }
+            if (batteryPercent !in 0..100) batteryPercent = (getSystemService(BATTERY_SERVICE) as BatteryManager).getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+            if (stopping) return START_NOT_STICKY
+            if (batteryPercent !in 0..100) { end("電池残量を確認できないため停止しました"); return START_NOT_STICKY }
+            prefs.edit().putBoolean("autoStartBlocked", false).apply()
+            stopAtElapsed = if (intent?.getBooleanExtra("limitedCapture", false) == true) SystemClock.elapsedRealtime() + 420000L else null
+            if (stopAtElapsed != null) main.postDelayed(endCapture, 420000L)
             sensors = getSystemService(SENSOR_SERVICE) as SensorManager
-            sensorThread = HandlerThread("StressLog sensors").apply { start() }
-            sensorHandler = Handler(sensorThread!!.looper)
-            ppgSensor = sensors.getSensorList(Sensor.TYPE_ALL).filter { it.stringType == "com.google.wear.sensor.ppg" }.sortedBy { it.isWakeUpSensor }.firstOrNull()
-            heartSensor = sensors.getDefaultSensor(Sensor.TYPE_HEART_RATE)
-            accelerationSensor = sensors.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-            if (!registerPhysiology()) { finalStatus = "PPGセンサーに接続できません"; stopSelf(); return START_NOT_STICKY }
+            sensorThread = HandlerThread("StressLog sensors").apply { start() }; sensorHandler = Handler(sensorThread!!.looper)
             connectivity = getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager
-            requestWifi()
-            wakeLock = (getSystemService(POWER_SERVICE) as PowerManager).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "StressLog:live").apply { setReferenceCounted(false); acquire(10*60*1000L) }
+            val listener = object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(n: Network) { if (active && callback === this) network = n }
+                override fun onLost(n: Network) { if (network == n) network = null }
+            }
+            callback = listener
+            connectivity.requestNetwork(NetworkRequest.Builder().addTransportType(NetworkCapabilities.TRANSPORT_WIFI).build(), listener)
+            wakeLock = (getSystemService(POWER_SERVICE) as PowerManager).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "StressLog:long").apply { setReferenceCounted(false); acquire(600000L) }
             wakeRenewedAt = SystemClock.elapsedRealtime()
-            // Only a wake-up contact sensor may resume us after releasing the CPU
-            // lock. Devices without it retain the existing continuous behavior.
-            val wear = sensors.getDefaultSensor(Sensor.TYPE_LOW_LATENCY_OFFBODY_DETECT, true)
-                ?: sensors.getDefaultSensor(Sensor.TYPE_LOW_LATENCY_OFFBODY_DETECT)
-            wearCanWake = wear?.isWakeUpSensor == true
-            if (wear != null && !sensors.registerListener(this, wear, SensorManager.SENSOR_DELAY_NORMAL, 0, sensorHandler)) wearCanWake = false
-            setCaptureLimit(intent?.getBooleanExtra("limitedCapture", false) == true)
-            updateStatus("計測開始。Wi-Fi接続を待っています")
-            executor.scheduleWithFixedDelay({ flush() }, 6, 6, TimeUnit.SECONDS)
-        } catch (e: RuntimeException) { finalStatus = "開始失敗: ${e.javaClass.simpleName}"; android.util.Log.w("StressLogLive", finalStatus, e); stopSelf() }
+            sensorHandler!!.post {
+                if (!active) return@post
+                try {
+                    val ppg = sensors.getSensorList(Sensor.TYPE_ALL).filter { it.stringType == "com.google.wear.sensor.ppg" }.sortedBy { it.isWakeUpSensor }.firstOrNull()
+                    fun register(sensor: Sensor?, period: Int) = sensor != null && sensors.registerListener(this, sensor, period, 0, sensorHandler)
+                    registrations = JSONObject().put("ppg", register(ppg, 10000))
+                        .put("heartRate", register(sensors.getDefaultSensor(Sensor.TYPE_HEART_RATE), SensorManager.SENSOR_DELAY_NORMAL))
+                        .put("acceleration", register(sensors.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), 40000))
+                    register(sensors.getDefaultSensor(Sensor.TYPE_LOW_LATENCY_OFFBODY_DETECT), SensorManager.SENSOR_DELAY_NORMAL)
+                    if (!registrations.getBoolean("ppg")) end("PPGセンサーに接続できません")
+                    else { updateStatus("計測開始。PCへ自動接続します"); executor.scheduleWithFixedDelay({ flush() }, 6, 6, TimeUnit.SECONDS) }
+                } catch (e: RuntimeException) { end("開始失敗: ${e.javaClass.simpleName}") }
+            }
+        } catch (e: Exception) { end("開始失敗: ${e.javaClass.simpleName}") }
         return START_NOT_STICKY
     }
     override fun onSensorChanged(event: SensorEvent) {
         if (!active) return
-        if (captureExpired()) { finalStatus = "7分間の計測が終了しました"; stopSelf(); return }
-        val values = event.values.copyOf(minOf(event.values.size, 16))
-        if (values.any { !it.isFinite() }) return
-        val row = Sample(event.sensor.stringType, event.timestamp, values, event.accuracy)
-        if (event.sensor.type == Sensor.TYPE_LOW_LATENCY_OFFBODY_DETECT) {
-            val value = values.firstOrNull()
-            if (value == 0f || value == 1f) {
-                lastWearValue = if (value == 1f) 1 else 0
-                mainHandler.removeCallbacks(pauseIfUnworn)
-                if (lastWearValue == 0 && wearCanWake) mainHandler.postDelayed(pauseIfUnworn, 5000)
-                else synchronized(lifecycleLock) {
-                    if (active && offBodyPaused) resumeForWear()
-                }
-            }
-        } else if (offBodyPaused) return
-        synchronized(queue) {
-            if (queue.size >= 5000) { queue.removeFirst(); dropped.incrementAndGet() }
-            queue.addLast(row)
-        }
+        if (expired()) { end("7分間の計測が終了しました"); return }
+        val values = event.values.copyOf(minOf(16, event.values.size)); if (values.any { !it.isFinite() }) return
+        val sample = Sample(event.sensor.stringType, event.timestamp, values, event.accuracy)
+        if (event.sensor.type == Sensor.TYPE_LOW_LATENCY_OFFBODY_DETECT && values.firstOrNull() in listOf(0f, 1f)) latestWear = sample
+        synchronized(queue) { if (queue.size >= 5000) { queue.removeFirst(); dropped.incrementAndGet() }; queue.addLast(sample) }
     }
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
-    private fun registerPhysiology(): Boolean {
-        fun register(sensor: Sensor?, period: Int) = sensor != null && sensors.registerListener(this, sensor, period, 0, sensorHandler)
-        registrations = JSONObject().put("ppg", register(ppgSensor, 10000))
-            .put("heartRate", register(heartSensor, SensorManager.SENSOR_DELAY_NORMAL))
-            .put("acceleration", register(accelerationSensor, 40000))
-        return registrations.getBoolean("ppg")
-    }
-    private fun requestWifi() {
-        if (wifiRequested) return
-        val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(n: Network) { if (networkCallback === this && active && !offBodyPaused) network = n }
-            override fun onLost(n: Network) { if (networkCallback === this && network == n) network = null }
-        }
-        networkCallback = callback
-        connectivity.requestNetwork(NetworkRequest.Builder().addTransportType(NetworkCapabilities.TRANSPORT_WIFI).addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET).build(), callback)
-        wifiRequested = true
-    }
-    private fun releaseWifi() {
-        val callback = networkCallback; networkCallback = null
-        if (callback != null) try { connectivity.unregisterNetworkCallback(callback) } catch (_: Exception) {}
-        wifiRequested = false; network = null
-    }
-    // Called under lifecycleLock; only the wake-up off-body listener remains.
-    private fun pauseForWear() {
-        offBodyPaused = true
-        listOfNotNull(ppgSensor, heartSensor, accelerationSensor).forEach { sensors.unregisterListener(this, it) }
-        registrations = JSONObject().put("ppg", false).put("heartRate", false).put("acceleration", false)
-        updateStatus("装着待ち（省電力）。時計を着けると再開します")
-        executor.execute {
-            if (active && offBodyPaused) {
-                // Pending samples from before detachment must not arrive as a
-                // fresh post-resume batch. Keep the contact marker for the PC.
-                dropped.addAndGet((pendingRows?.length() ?: 0).toLong()); pendingRows = null
-                synchronized(queue) {
-                    val contact = queue.lastOrNull { it.type == "android.sensor.low_latency_offbody_detect" }
-                    dropped.addAndGet(queue.count { it !== contact }.toLong())
-                    queue.clear(); if (contact != null) queue.addLast(contact)
-                }
-                flush()
-                synchronized(lifecycleLock) {
-                    if (active && offBodyPaused) {
-                        releaseWifi()
-                        if (wakeLock?.isHeld == true) wakeLock?.release()
-                    }
-                }
-            }
-        }
-    }
-    private fun resumeForWear() {
-        try {
-            wakeLock?.acquire(10*60*1000L); wakeRenewedAt = SystemClock.elapsedRealtime()
-            if (!registerPhysiology()) { finalStatus = "再開失敗: PPGセンサーに接続できません"; stopSelf(); return }
-            offBodyPaused = false
-            requestWifi()
-            // Queue ownership remains on the send executor.
-            executor.execute { nextAttemptAt = 0; retryDelayMs = 6000L }
-            updateStatus("装着を確認。PCへの送信を再開します")
-        } catch (e: RuntimeException) {
-            finalStatus = "再開失敗: ${e.javaClass.simpleName}"; android.util.Log.w("StressLogLive", finalStatus, e); stopSelf()
-        }
-    }
+    private fun expired() = stopAtElapsed?.let { SystemClock.elapsedRealtime() >= it } == true
     private fun flush() {
         if (!active) return
-        if (captureExpired()) { finalStatus = "7分間の計測が終了しました"; stopSelf(); return }
-        if (offBodyPaused && synchronized(queue) { queue.isEmpty() } && pendingRows == null) return
+        if (expired()) { end("7分間の計測が終了しました"); return }
+        if (LongRunPolicy.lowBattery(batteryPercent, stopPercent)) { end("電池${stopPercent}％以下のため停止しました"); return }
         try {
-            if (!offBodyPaused && (wakeLock?.isHeld == false || SystemClock.elapsedRealtime()-wakeRenewedAt>5*60*1000L)) {
-                wakeLock?.acquire(10*60*1000L)
-                wakeRenewedAt = SystemClock.elapsedRealtime()
-            }
-            if (SystemClock.elapsedRealtime() < nextAttemptAt) return
-            val n = network ?: run { updateStatus("Wi-Fi待ち。時計とPCを同じネットワークへ接続してください"); return }
-            val prefs = getSharedPreferences("live", MODE_PRIVATE)
-            val settings = ConnectionSettings(prefs.getString("receiver", null) ?: error("PC設定なし"),
-                prefs.getString("certificate", "").orEmpty(), prefs.getString("token", "").orEmpty())
-            if (settings != connectionSettings) {
-                val certBytes = Base64.decode(settings.certificate, Base64.DEFAULT)
-                val cert = CertificateFactory.getInstance("X.509").generateCertificate(certBytes.inputStream())
-                val store = KeyStore.getInstance(KeyStore.getDefaultType()).apply { load(null); setCertificateEntry("pc", cert) }
-                val managers = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).apply { init(store) }
-                socketFactory = SSLContext.getInstance("TLS").apply { init(null, managers.trustManagers, null) }.socketFactory
-                connectionSettings = settings
-                useCompression = true
-            }
-            val rows = pendingRows ?: run {
-                val batch = JSONArray()
-                val samples = synchronized(queue) { List(minOf(queue.size, 2000)) { queue.removeFirst() } }
-                samples.forEach { batch.put(it.json()) }
-                pendingRows = batch
-                pendingSequence = sequence++
-                batch
+            val now = SystemClock.elapsedRealtime()
+            if (wakeLock?.isHeld == false || now - wakeRenewedAt >= 300000L) { wakeLock?.acquire(600000L); wakeRenewedAt = now }
+            if (now < nextAttempt) return
+            val n = network ?: run { updateStatus("Wi-Fi待ち。PCと同じWi-Fiへ接続してください"); return }
+            if (pending == null) {
+                val rows = JSONArray()
+                synchronized(queue) { repeat(minOf(queue.size, 2000)) { rows.put(queue.removeFirst().json()) } }
+                pending = rows; pendingSequence = sequence++
             }
             val payload = JSONObject().put("sessionId", sessionId).put("model", Build.MODEL).put("sequence", pendingSequence)
                 .put("sentAtEpochMs", System.currentTimeMillis()).put("sentElapsedNs", SystemClock.elapsedRealtimeNanos().toString())
-                .put("droppedEvents", dropped.get()).put("registrations", registrations).put("events", rows)
-                .put("batteryPercent", (getSystemService(BATTERY_SERVICE) as BatteryManager).getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY))
-            try {
-                val bytes = payload.toString().toByteArray(Charsets.UTF_8)
-                var response = post(n, settings, bytes)
-                // An older PC receiver accepts the original, uncompressed protocol.
-                if ((response == 415 || response == 400) && useCompression) {
-                    useCompression = false
-                    response = post(n, settings, bytes)
-                }
-                if (response != 200) error("PC応答 $response")
-                if (!active) return
-                pendingRows = null
-                sent += rows.length()
-                retryDelayMs = 6000L
-                nextAttemptAt = 0L
-                lastAcknowledgedAt = SystemClock.elapsedRealtime()
-                updateStatus("$SENDING_STATUS\n送信 $sent 件 / 破棄 ${dropped.get()} 件")
-            } catch (e: Exception) {
-                if (!active) return
-                nextAttemptAt = SystemClock.elapsedRealtime() + retryDelayMs
-                retryDelayMs = minOf(retryDelayMs * 2, 60_000L)
-                android.util.Log.w("StressLogLive", "Telemetry send failed", e)
-                updateStatus("送信待ち: ${e.javaClass.simpleName}\nPCの起動・Wi-Fi・接続許可を確認")
+                .put("droppedEvents", dropped.get()).put("registrations", registrations).put("events", pending).put("batteryPercent", batteryPercent)
+            latestWear?.let { payload.put("wearState", JSONObject().put("value", it.values[0].toInt()).put("sensorTimestampNs", it.time.toString())) }
+            val response = post(n, payload.toString().toByteArray(Charsets.UTF_8))
+            if (response != 200) error("PC response $response")
+            if (!active) return
+            sent += pending!!.length(); pending = null; retryDelay = 6000L; nextAttempt = 0
+            lastAcknowledgedAt = SystemClock.elapsedRealtime()
+            updateStatus("$SENDING_STATUS\n送信 $sent 件 / 破棄 ${dropped.get()} 件\n電池 $batteryPercent％ · ${stopPercent}％で停止")
+        } catch (_: Exception) {
+            if (!active) return
+            val now = SystemClock.elapsedRealtime()
+            if (now - lastDiscovery >= 60000L) {
+                lastDiscovery = now
+                try { network?.let { n -> ReceiverDiscovery.find(n, connectivity, token)?.let { found -> receiver = found; getSharedPreferences("live", MODE_PRIVATE).edit().putString("receiver", found).apply() } } } catch (_: Exception) { }
             }
-        } catch (e: Exception) { if (active) updateStatus("計測エラー: ${e.javaClass.simpleName}") }
-    }
-    private fun setCaptureLimit(limited: Boolean) {
-        mainHandler.removeCallbacks(stopAfterCapture)
-        val alarms = getSystemService(ALARM_SERVICE) as AlarmManager
-        stopAlarm?.let { alarms.cancel(it) }; stopAlarm = null
-        stopAtElapsed = if (limited) SystemClock.elapsedRealtime() + 7 * 60 * 1000L else null
-        if (limited) {
-            // Handler uptime excludes deep sleep. An elapsed-time alarm is the
-            // idle fallback; callbacks also reject acquisition past the deadline.
-            val pending = PendingIntent.getService(this, 2, Intent(this, LiveMeasurementService::class.java).setAction("LIMIT_EXPIRED"), PendingIntent.FLAG_IMMUTABLE)
-            stopAlarm = pending
-            alarms.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, stopAtElapsed!!, pending)
-            mainHandler.postDelayed(stopAfterCapture, 7 * 60 * 1000L)
+            nextAttempt = now + retryDelay; retryDelay = LongRunPolicy.retryDelay(retryDelay)
+            updateStatus("PCへの接続待ち。自動で再接続します\nPCのStressLogと同じWi-Fiを確認してください。未送信データは一部失われる場合があります。")
         }
     }
-    private fun captureExpired() = stopAtElapsed?.let { SystemClock.elapsedRealtime() >= it } == true
-    private fun post(network: Network, settings: ConnectionSettings, bytes: ByteArray): Int {
-        val body = if (useCompression) ByteArrayOutputStream().use { buffer ->
-            GZIPOutputStream(buffer).use { it.write(bytes) }
-            buffer.toByteArray()
-        } else bytes
-        val connection = network.openConnection(URL(settings.receiver)) as HttpsURLConnection
+    private fun post(network: Network, bytes: ByteArray): Int {
+        certificate?.checkValidity() ?: error("Missing pinned certificate")
+        val body = ByteArrayOutputStream().use { buffer -> GZIPOutputStream(buffer).use { it.write(bytes) }; buffer.toByteArray() }
+        val connection = network.openConnection(URL(receiver)) as HttpsURLConnection
         try {
-            connection.sslSocketFactory = socketFactory ?: error("暗号通信の設定なし")
-            connection.requestMethod = "POST"
-            connection.connectTimeout = 3000
-            connection.readTimeout = 3000
-            connection.doOutput = true
-            connection.setFixedLengthStreamingMode(body.size)
-            connection.setRequestProperty("Content-Type", "application/json")
-            connection.setRequestProperty("Authorization", "Bearer " + settings.token)
-            if (useCompression) connection.setRequestProperty("Content-Encoding", "gzip")
+            connection.sslSocketFactory = tls ?: error("TLS not configured")
+            // Endpoint addresses can change; only the EXACT provisioned certificate is accepted.
+            // TLS chain/expiry is still validated by the dedicated TrustManager above.
+            connection.hostnameVerifier = javax.net.ssl.HostnameVerifier { _, session ->
+                try { MessageDigest.isEqual(session.peerCertificates.first().encoded, pinnedCertificate) } catch (_: Exception) { false }
+            }
+            connection.instanceFollowRedirects = false
+            connection.requestMethod = "POST"; connection.connectTimeout = 3000; connection.readTimeout = 3000; connection.doOutput = true
+            connection.setFixedLengthStreamingMode(body.size); connection.setRequestProperty("Content-Type", "application/json")
+            connection.setRequestProperty("Content-Encoding", "gzip"); connection.setRequestProperty("Authorization", "Bearer $token")
             connection.outputStream.use { it.write(body) }
             val code = connection.responseCode
-            val response = if (code < 400) connection.inputStream else connection.errorStream
-            response?.use { stream ->
-                val buffer = ByteArray(256)
-                while (stream.read(buffer) != -1) { /* Drain to permit connection reuse. */ }
-            }
+            (if (code < 400) connection.inputStream else connection.errorStream)?.use { stream -> val buffer=ByteArray(256); var total=0; while(total<4096){val n=stream.read(buffer);if(n<0)break;total+=n} }
             return code
         } finally { connection.disconnect() }
     }
-    private fun updateStatus(text: String) {
-        val shown = if (active && offBodyPaused) "装着待ち（省電力）。時計を着けると再開します" else text
-        getSharedPreferences("live", MODE_PRIVATE).edit().putString("status", shown).apply()
+    private fun updateStatus(value: String, force: Boolean = false) {
+        liveStatus = value
+        val now = SystemClock.elapsedRealtime()
+        if (force || now - lastPersistedAt >= 30000L) {
+            getSharedPreferences("live", MODE_PRIVATE).edit().putString("status", value).apply(); lastPersistedAt = now
+        }
+    }
+    private fun end(reason: String) {
+        if (stopping) return
+        stopping = true; active = false; finalStatus = reason
+        main.post { getSharedPreferences("live", MODE_PRIVATE).edit().putBoolean("autoStartBlocked", true).apply(); stopSelf() }
     }
     override fun onDestroy() {
-        synchronized(lifecycleLock) {
-            active = false
-            if (::sensors.isInitialized) sensors.unregisterListener(this)
-            if (::connectivity.isInitialized) releaseWifi()
-            if (wakeLock?.isHeld == true) wakeLock?.release()
-        }
-        mainHandler.removeCallbacks(stopAfterCapture)
-        mainHandler.removeCallbacks(pauseIfUnworn)
-        stopAlarm?.let { (getSystemService(ALARM_SERVICE) as AlarmManager).cancel(it) }; stopAlarm = null
-        stopAtElapsed = null
-        executor.shutdownNow(); sensorThread?.quitSafely()
-        lastAcknowledgedAt = null
-        updateStatus(finalStatus); super.onDestroy()
+        active = false; stopping = true
+        main.removeCallbacks(endCapture)
+        if (batteryRegistered) { unregisterReceiver(battery); batteryRegistered = false }
+        val listener = callback; callback = null; network = null
+        if (listener != null && ::connectivity.isInitialized) try { connectivity.unregisterNetworkCallback(listener) } catch (_: Exception) { }
+        val worker = sensorHandler; val thread = sensorThread
+        // Do not wait for another thread while holding a lifecycle lock on main.
+        if (worker != null) worker.post { if (::sensors.isInitialized) sensors.unregisterListener(this); thread?.quitSafely() }
+        executor.shutdownNow()
+        if (wakeLock?.isHeld == true) wakeLock?.release()
+        stopAtElapsed = null; lastAcknowledgedAt = null
+        updateStatus(finalStatus, true); super.onDestroy()
     }
 }
