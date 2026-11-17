@@ -1,5 +1,7 @@
 # StressLog — Pixel Watch / PC Web
 
+**比較アプリを追加:** 現行の計算を残したまま、活動補正と時間統合を加えた新方式を並べて確認できます。`Start-Comparison.cmd` で [localhost:5174/compare.html](http://localhost:5174/compare.html) を起動。[使い方・学習データ・評価の限界](docs/STRESS_COMPARISON.md)。新方式の採用はまだ決めていません。
+
 **最新追加:** 運動・体動と回復中のストレス表示を保留し、身体反応の参考値を継続保存する方式を追加しました。以前の記録も残します。[計算方法・公開データでの評価・限界](docs/ACTIVITY_CONTEXT.md)。時計側の更新は不要です。
 
 初代Pixel Watchの心拍・脈波・加速度をWi-FiでWindows PCへ送り、ブラウザでストレス反応の推定スコアを見る研究用アプリです。

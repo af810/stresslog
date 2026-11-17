@@ -1,5 +1,7 @@
 # StressLog 引き継ぎ入口（2026-11-06）
 
+**比較アプリの最新追加:** `feature/stress-comparison`、`docs/STRESS_COMPARISON.md`。現行版を維持し、別URLで新方式を比較することを依頼された。`Start-Comparison.cmd` で5174の比較版を起動。個人データの保存先も `.stresslog-local/comparison/` へ分離。どちらを採用するかは未決定。時計を操作・開始せず、既存受信機を読むだけで動作する。
+
 **運動判定の最新追加:** `feature/activity-aware-stress` の `docs/ACTIVITY_CONTEXT.md` を優先。
 従来モデルと別の身体活動モデルを組み合わせ、運動・回復中はストレス値を保留し身体反応参考値を保存する。
 新方式のCSVと履歴は別フォルダへ保存し、旧記録は読み取り専用で保持。時計はv0.6.0を変更していない。

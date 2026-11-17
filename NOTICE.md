@@ -1,5 +1,9 @@
 # 出典・利用条件と配布範囲
 
+## 比較アプリの派生モデル
+
+`web/src/experimental/residual-model-v1.json` と `tools/population/comparison-artifacts/` は、下記Hongn2025の同じ公開データから作った別の派生モデル・集計・32件の数値特徴fixtureです。原波形や使用者の計測データは含めません。ODC-By 1.0の条件と原著・データセット・PhysioNetの出典表記を維持してください。活動補正等の参考論文と独自設計の差は `docs/STRESS_COMPARISON.md`。先行研究のモデルをそのまま配布しているわけではありません。
+
 ## Hongn2025由来の身体活動モデル
 
 `web/src/domain/models/physical-context-v1.json` は以下の公開データから本プロジェクトで学習した派生モデルです。

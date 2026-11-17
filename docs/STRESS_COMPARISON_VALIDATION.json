@@ -1,0 +1,39 @@
+{
+  "date": "2026-11-17",
+  "branch": "feature/stress-comparison",
+  "candidateModel": "hongn-residual-wrist120-v1",
+  "candidateSha256": "65cd8adc88745217598ab502221598fccfb647cc9971dab8661d3bbb5df72730",
+  "checks": {
+    "webTestsPassed": 118,
+    "originalReceiverTestsPassed": 31,
+    "comparisonReceiverTestsPassed": 4,
+    "originalAndComparisonBuildsPassed": true,
+    "pythonTypeScriptParityFixtures": 32,
+    "duplicateWindowsCannotAccumulateEvidence": true,
+    "isolatedSpikeAndSustainedInputTested": true,
+    "staleOffBodyAndMissingDataTested": true,
+    "observedNativeHeartCadenceTestedWithoutBpmInterpolation": true,
+    "apiOriginHostAndWriteRestrictionsTested": true,
+    "csvNullValuesAndReadOnlySourceTested": true,
+    "corruptComparisonJournalPreserved": true
+  },
+  "pcDeployment": {
+    "bothMethodsProducedNumbersFromSameWatchStream": true,
+    "comparisonRestartPreservedHistory": true,
+    "csvExportMatchedJournalRows": true,
+    "csvColumns": 18,
+    "repeatedStartReusedProcess": true,
+    "originalReceiverProcessUnchanged": true,
+    "originalWebProcessUnchanged": true,
+    "originalModelChecksumUnchanged": true,
+    "watchInteractedWith": false,
+    "extraWatchSensorOrUploadAdded": false,
+    "browserVisualInspectionPerformed": false
+  },
+  "limits": [
+    "Neither method has been selected as the preferred implementation.",
+    "Public-data raw-score detection of stress tasks at the fixed 65 threshold was only 17.4 percent.",
+    "Temporal event performance, everyday activity specificity and psychological validity on Pixel Watch remain unvalidated.",
+    "Different observation windows and uncalibrated scales prevent interpreting a lower score as higher accuracy."
+  ]
+}

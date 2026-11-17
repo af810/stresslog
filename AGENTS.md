@@ -1,5 +1,15 @@
 # AIによる引き継ぎ
 
+## 最新：現行版を維持した比較アプリ
+
+- `feature/stress-comparison`。ユーザーは現行と別に新方式を作り、値を比較して採否を決めたいと依頼。`docs/STRESS_COMPARISON.md` を読む。
+- 起動は `Start-Comparison.cmd`、URL `http://localhost:5174/compare.html`。現行は5173、比較APIは127.0.0.1:8786。現行のモデル・特徴量・受信機のコード・保存先を変更しない。
+- 比較アプリが現行の読み取りAPIから同じ時計データを取得する。時計の更新・追加送信・計測開始は行わない。停止は `scripts/Stop-Comparison.ps1` で比較プロセスだけ。
+- 新方式は公開Hongnデータ由来の120秒窓、活動補正、PRV欠測対応、時間統合。`hongn-residual-wrist120-v1`。設計案から省いた部分を報告書に明記。
+- 新方式を採用済みとしない。運動時高値は少ないがストレス課題の見逃しが多い。時間統合後のイベント性能は未評価。低い値・滑らかさだけで精度改善と主張しない。
+- 比較JSONL・CSV・特徴量は `.stresslog-local/comparison/` のみ。過去の現行値から新方式の履歴を再生成しない。GitHubに個人データを含めない。
+- 検証は `scripts/Verify-Comparison.ps1`。現行確認に加えて別アプリのテスト・ビルドを実行する。
+
 ## 最新追加：運動・体動の扱い（以下の以前の方針より優先）
 
 - ブランチ `feature/activity-aware-stress`。`docs/ACTIVITY_CONTEXT.md` を読む。WESADの数値モデルを維持し、Hongn2025の公開データで別の身体活動モデルを追加した。
