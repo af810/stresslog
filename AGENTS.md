@@ -1,5 +1,14 @@
 # AIによる引き継ぎ
 
+## 最新追加：運動・体動の扱い（以下の以前の方針より優先）
+
+- ブランチ `feature/activity-aware-stress`。`docs/ACTIVITY_CONTEXT.md` を読む。WESADの数値モデルを維持し、Hongn2025の公開データで別の身体活動モデルを追加した。
+- 運動疑い・大きな体動・その後120秒はストレス値をnullにし、身体反応参考値を残す。0埋めや古い値の現在表示をしない。完全な運動とストレスの分離ではない。
+- 心拍のみの候補モデルは安静の誤判定が悪化したため不採用。研究集計のcardiacOnly/newPositiveを実装結果と混同しない。実装結果はoldModelWithContext。
+- 新履歴は `daily-context-v2`、最新値は `last-observation-context-v2.json`。旧dailyと旧最新値は保持。API履歴schemaVersionは2。旧履歴は `series=legacy` の読み取り専用。
+- 使用者は「寝るので計測終えました」と連絡済み。時計を操作・起動・計測再開しない。次回の実機確認は使用者が再開できる時に行う。時計はv0.6.0のまま。通知機能も追加しない。
+- 保留率・課題区間の感度低下・Pixel Watch未検証を隠さない。詳細集計は `tools/population/activity-artifacts/`。
+
 ## 2026-11-17の更新を優先
 
 - 現在の作業ブランチは `feature/long-session`、時計ソースはv0.6.0 / code13。

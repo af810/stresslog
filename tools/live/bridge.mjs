@@ -11,6 +11,7 @@ import {perceptionRecord} from '../../web/src/domain/perceptionRecord.ts';
 import {ObjectiveStore} from './objective-store.mjs';
 import {PopulationStore} from './population-store.mjs';
 import {startDiscovery} from './receiver-discovery.mjs';
+import {DailyHistory} from './daily-history.mjs';
 
 export function createBridge({key,cert,token,host='0.0.0.0',ingestPort=8787,localPort=8788,captureDirectory=null,objectiveDirectory=null,populationDirectory=null,discoveryPort=null}) {
   if(typeof token!=='string' || !/^[a-f0-9]{64}$/.test(token))throw Error('32-byte token required');
@@ -18,6 +19,7 @@ export function createBridge({key,cert,token,host='0.0.0.0',ingestPort=8787,loca
   const captures=captureDirectory?new CaptureStore(captureDirectory):null;
   const objective=captureDirectory?new ObjectiveStore(objectiveDirectory??path.join(captureDirectory,'objective'),captureDirectory):null;
   const population=new PopulationStore(populationDirectory??(captureDirectory?path.join(captureDirectory,'population'):null));
+  const legacyHistory=new DailyHistory(population.directory?path.join(population.directory,'daily'):null,true);
   let populationTimer,discovery;
   const json=(res,status,value)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(value));};
   const ingest=https.createServer({key,cert,minVersion:'TLSv1.2'},(req,res)=>{
@@ -86,9 +88,10 @@ export function createBridge({key,cert,token,host='0.0.0.0',ingestPort=8787,loca
       void population.snapshot(state.window()).then(value=>json(res,200,value),()=>json(res,503,{error:'Population estimate unavailable'}));return;
     }
     if(req.url==='/population-history'||req.url.startsWith('/population-history?')){
-      const day=new URL(req.url,'http://localhost').searchParams.get('day');
+      const params=new URL(req.url,'http://localhost').searchParams,day=params.get('day');
       if(day&&!/^\d{4}-\d{2}-\d{2}$/.test(day))return json(res,400,{error:'Invalid day'});
-      void population.history.snapshot(Date.now(),day??undefined).then(value=>json(res,200,value),()=>json(res,503,{error:'History unavailable'}));return;
+      const history=params.get('series')==='legacy'?legacyHistory:population.history;
+      void history.snapshot(Date.now(),day??undefined).then(value=>json(res,200,value),()=>json(res,503,{error:'History unavailable'}));return;
     }
     if(req.url==='/objective-references'){
       if(!objective)return json(res,503,{error:'Objective reference store is not configured'});

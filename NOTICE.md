@@ -1,5 +1,17 @@
 # 出典・利用条件と配布範囲
 
+## Hongn2025由来の身体活動モデル
+
+`web/src/domain/models/physical-context-v1.json` は以下の公開データから本プロジェクトで学習した派生モデルです。
+
+- データ: Hongn, A., Bosch, F., Prado, L., & Bonomini, P. (2025). Wearable Device Dataset from Induced Stress and Structured Exercise Sessions, v1.0.1. PhysioNet. https://doi.org/10.13026/he0v-tf17
+- 原著: Hongn, A., Bosch, F., Prado, L. E., Ferrández, J. M., & Bonomini, M. P. (2025). Wearable Physiological Signals under Acute Stress and Exercise Conditions. Scientific Data 12, 520. https://doi.org/10.1038/s41597-025-04845-9
+- 提供ページ: https://physionet.org/content/wearable-device-dataset/1.0.1/ 。Open Data Commons Attribution License v1.0: https://opendatacommons.org/licenses/by/1-0/
+- 評価のみ: Jarchi, D. & Casson, A. J. (2017). Description of a Database Containing Wrist PPG Signals Recorded during Physical Exercise with Both Accelerometer and Gyroscope Measures of Motion. https://doi.org/10.3390/data2010001 。Wrist PPG During Exercise v1.0.0, https://doi.org/10.13026/C2PQ1X 、https://physionet.org/content/wrist/1.0.0/ 。同ODC-By v1.0。
+- PhysioNet標準引用: Pollard et al. (2026). PhysioNet as a global platform for biomedical research. https://doi.org/10.1038/s44360-026-00096-z
+
+派生モデル、評価集計、32件の公開研究由来の数値特徴・出力fixtureを同梱。原波形は再配布していません。公開時は出典とODC-Byの条件を維持してください。WESADモデルの利用条件も引き続き適用されます。独自閾値と回復時間は `docs/ACTIVITY_CONTEXT.md` に明記。
+
 ## WESAD由来モデル
 
 `web/src/domain/models/wesad-v1.json` はWESADを用いて本プロジェクトで学習した派生モデルです。

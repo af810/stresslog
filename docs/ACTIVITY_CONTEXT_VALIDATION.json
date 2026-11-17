@@ -1,0 +1,45 @@
+{
+  "date": "2026-11-17",
+  "branch": "feature/activity-aware-stress",
+  "stressModel": "wesad-population-rf60-v1",
+  "contextModel": "hongn-physical-context-rf60-v1",
+  "method": "activity-context-rf60-recovery120-v1",
+  "automatedChecks": {
+    "webTestsPassed": 112,
+    "receiverTestsPassed": 31,
+    "productionBuildPassed": true,
+    "contextPythonTypeScriptParityFixtures": 32,
+    "existingStressModelParityFixtures": 64,
+    "movementKeepsBodyScoreAndNullStress": true,
+    "recoverySurvivesReceiverRestart": true,
+    "tlsIngestionToEstimateAndHistory": true,
+    "legacyHistoryReadOnly": true,
+    "verifiedWatchApkChecksumPassed": true
+  },
+  "pcDeployment": {
+    "receiverMethodVerified": true,
+    "historySchemaVersion": 2,
+    "webHttpStatus": 200,
+    "currentEstimateNullWhileStopped": true,
+    "legacyFilesChecksumsUnchanged": true,
+    "historyReadErrors": false,
+    "watchInteractedWith": false,
+    "newMeasurementStarted": false
+  },
+  "researchChecks": {
+    "hongnParticipants": 35,
+    "hongnWindows": 1579,
+    "participantHeldOutAcrossProtocols": true,
+    "sourceFilesChecksummed": true,
+    "independentExerciseParticipants": 8,
+    "independentExerciseWindows": 100,
+    "results": "../tools/population/activity-artifacts/comparison.json"
+  },
+  "limits": [
+    "Rejection is abstention, not a non-stress diagnosis.",
+    "Pixel Watch and everyday hand movements have not been validated for this change.",
+    "The 120-second recovery rule was tested in software, not evaluated as an end-to-end physiological operating point.",
+    "No additional user measurement or browser visual inspection was performed.",
+    "Exercise and psychological stress may occur together."
+  ]
+}

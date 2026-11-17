@@ -25,14 +25,28 @@ test('first use predicts without references; restart restores only a dated last 
  await store.finish();const restarted=new PopulationStore(dir);
  const restored=await restarted.snapshot({...data,connected:false,ppgFresh:false},now+20000);
  assert.equal(restored.current,null);assert.deepEqual(restored.last,first.current);
- const saved=await fs.readFile(path.join(dir,'last-observation-v1.json'),'utf8');
+ const saved=await fs.readFile(path.join(dir,'last-observation-context-v2.json'),'utf8');
  assert.equal(saved.includes('subjective'),false);assert.equal(saved.includes('baseline'),false);assert.equal(saved.includes('events'),false);
 });
 test('offline reanalysis stays historical and malformed cache is not overwritten',async t=>{
  const dir=await temporary(t),now=Date.now(),data=window(now),observation=extractPopulationObservation(data,now).observation;
  const store=new PopulationStore(dir);assert.equal(await store.importHistorical(observation),true);
  const result=await store.snapshot({...data,connected:false},now);assert.equal(result.current,null);assert.equal(result.last.source,'historical');
- const file=path.join(dir,'last-observation-v1.json');await fs.writeFile(file,'broken');
+ const file=path.join(dir,'last-observation-context-v2.json');await fs.writeFile(file,'broken');
  const corrupted=new PopulationStore(dir);const fresh=await corrupted.snapshot(data,now);assert.ok(fresh.error);assert.ok(fresh.current);
  assert.equal(await fs.readFile(file,'utf8'),'broken');
+});
+
+test('movement and its recovery survive a receiver restart without resuming live measurement',async t=>{
+ const dir=await temporary(t),now=Date.now(),moving=window(now);
+ for(const event of moving.report.events)if(event.sensorStringType==='android.sensor.accelerometer')event.values=[15,0,9.80665];
+ const store=new PopulationStore(dir),first=await store.snapshot(moving,now);
+ assert.equal(first.current.assessment.status,'movement');assert.equal(first.current.assessment.stressScore,null);
+ const body=first.current.assessment.bodyResponseScore;assert.equal(body,first.current.prediction.value);
+ await store.finish();const restarted=new PopulationStore(dir);
+ const stopped=await restarted.snapshot({...moving,connected:false},now+1000);assert.equal(stopped.current,null);
+ const calm=await restarted.snapshot(window(now+60000),now+60000);assert.equal(calm.current.assessment.status,'recovery');assert.equal(calm.current.assessment.stressScore,null);
+ const recovered=await restarted.snapshot(window(now+121000),now+121000);assert.equal(recovered.current.assessment.status,'eligible');
+ assert.equal(recovered.current.assessment.stressScore,recovered.current.prediction.value);
+ await restarted.finish();
 });

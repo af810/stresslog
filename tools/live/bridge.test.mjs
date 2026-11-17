@@ -37,6 +37,15 @@ test('first-session population estimate flows through TLS ingestion without pers
     const result=await request(endpoint);assert.equal(result.status,200);assert.ok(result.data.current);
     assert.equal(result.data.current.prediction.head,'heartMotion');assert.ok(result.data.current.prediction.value>=0&&result.data.current.prediction.value<=100);
     assert.equal(result.data.current.observation.sessionId,'population-first-session-test');
+    assert.equal(result.data.current.assessment.status,'eligible');
+    const history=await request({...endpoint,path:'/population-history'});assert.equal(history.data.schemaVersion,2);assert.equal(history.data.points[0].stressValue,result.data.current.prediction.value);
+    const movingEvents=events.map(e=>e.sensorStringType==='android.sensor.accelerometer'?{...e,values:[15,0,9.80665]}:e);
+    for(let offset=0;offset<movingEvents.length;offset+=2000){
+      assert.equal((await request(ingest,{sessionId:'population-moving-session-test',model:'synthetic-watch',sequence:offset/2000,sentAtEpochMs:Date.now(),sentElapsedNs:'72000000000',registrations:{ppg:true,heartRate:true,acceleration:true},events:movingEvents.slice(offset,offset+2000)})).status,200);
+    }
+    const movement=await request(endpoint);assert.equal(movement.data.current.assessment.status,'movement');assert.equal(movement.data.current.assessment.stressScore,null);assert.equal(movement.data.current.assessment.bodyResponseScore,movement.data.current.prediction.value);
+    const movingHistory=await request({...endpoint,path:'/population-history'});assert.equal(movingHistory.data.points.at(-1).stressValue,null);assert.equal(movingHistory.data.points.at(-1).activityState,'movement');
+    const legacy=await request({...endpoint,path:'/population-history?series=legacy'});assert.equal(legacy.data.contextMethod,'legacy_unfiltered');
   }finally{await bridge.close();}
 });
 test('TLS + bearer ingestion; isolated loopback read API; end-to-end window',async()=>{

@@ -25,7 +25,9 @@ export function PopulationStressCard({now}:{now:number}){
     <div className="live-card-heading"><h3>ストレス推定</h3><span className="live-badge">汎用モデル・精度未検証</span></div>
     <p className="live-hint">個人の事前データ・体感入力・基準づくりは不要です。</p>
     <p className="live-progress-heading"><strong>{live?'計測中の推定値':shown?'直近の保存データによる推定値':'モデル準備完了・計測待ち'}</strong></p>
-    <p className="live-score">{shown?Math.round(shown.prediction.value):'—'}<small> / 100</small></p>
+    <p className="live-score">{shown?.assessment.stressScore!=null?Math.round(shown.assessment.stressScore):'—'}<small> / 100</small></p>
+    {shown&&<p role="status">{shown.assessment.status==='eligible'?'運動・体動の除外条件には該当していません。':shown.assessment.reason}</p>}
+    {shown&&<p>身体反応の参考値：<strong>{Math.round(shown.assessment.bodyResponseScore)} / 100</strong> {shown.assessment.status!=='eligible'&&'（心理的ストレスの値としては扱いません）'}</p>}
     {shown&&time&&<p className="live-hint">測定日時：<time dateTime={new Date(shown.observation.at).toISOString()}>{time}</time> · 約1分のデータ</p>}
     {!live&&<p role="status">{shown?'現在の値ではありません。時計の計測を再開すると、新しいデータで自動更新します。':snapshot?.reason??'時計で計測を開始すると、約1分のデータから推定します。'}</p>}
     {shown&&<p>{shown.prediction.hrvUsed?'心拍・体動・脈波由来のHRV相当指標（PRV）を使用。':'心拍・体動を使用。脈波変動の品質条件を満たさない場合も、このモデルで推定を続けます。'}</p>}
@@ -36,10 +38,12 @@ export function PopulationStressCard({now}:{now:number}){
     {snapshot?.error&&<p role="alert">{snapshot.error}</p>}
     <details><summary>モデルの根拠と限界</summary>
       <p>WESADの15人分の公開実験データから学習したランダムフォレストを使います。正解ラベルは実験条件（ストレス課題と、安静・娯楽）で、質問票の点数は使っていません。利用者本人の履歴で学習・補正しません。</p>
-      <p>約60秒の心拍中央値と体動を入力します。脈波の条件がそろえばln(RMSSD)・ln(SDNN)・pNN50も使う別モデルへ切り替えます。体動は入力の一つで、安静だけを必須にはしません。</p>
+      <p>約60秒の心拍中央値と体動を入力します。脈波の条件がそろえばln(RMSSD)・ln(SDNN)・pNN50も使う別モデルへ切り替えます。別の公開データから学習した運動の判定と、大きな体動の条件を併用し、該当中とその後2分間は心理的ストレスの数値表示を保留します。身体反応の参考値は残します。</p>
       <p>学習時の心拍・HRVは同時記録された心電図から、体動は手首の加速度から算出しました。時計では心拍センサーと脈波を使用します。心電図と脈波、研究機器とPixel Watchの違いによる影響は未検証です。</p>
       <p>15人を1人ずつ学習から外す評価を実施しています。学習時の心電図でのAUCは心拍・体動モデル {POPULATION_MODEL_INFO.validation.heartMotion.auc.toFixed(3)}、変動指標を加えたモデル {POPULATION_MODEL_INFO.validation.heartMotionPrv.auc.toFixed(3)}。この利用者や日常生活での精度を示すものではありません。</p>
       <p>運動、発熱、カフェイン、睡眠不足などによる反応と心理的ストレスは、これらの信号だけでは区別しきれません。研究参加者も15人と少なく、幅広い人への一般化は未検証です。</p>
+      <p>運動判定の学習元は、若年成人35人の安静・ストレス課題・自転車運動と回復の公開データです。歩行や日常の手作業を完全に見分ける機能ではありません。2分の回復待ちは設計上の目安です。運動中に心理的ストレスがないことを意味しません。</p>
+      <p><a href="https://doi.org/10.1038/s41597-025-04845-9" target="_blank" rel="noreferrer">運動・ストレス課題データの原著論文</a> · <a href="https://physionet.org/content/wearable-device-dataset/1.0.1/" target="_blank" rel="noreferrer">PhysioNet公開データ</a></p>
       <p><a href="https://doi.org/10.1145/3242969.3242985" target="_blank" rel="noreferrer">WESAD原著論文</a> · <a href="https://ubi29.informatik.uni-siegen.de/usi/data_wesad.html" target="_blank" rel="noreferrer">データセットと利用条件</a> · <a href="https://doi.org/10.1371/journal.pone.0076585" target="_blank" rel="noreferrer">脈波検出の参考文献</a></p>
       <p>モデル {POPULATION_MODEL_INFO.id}。データセットの条件に従い、科学研究・非商用用途で利用してください。</p>
     </details>

@@ -1,5 +1,6 @@
 import artifact from './models/wesad-v1.json' with {type:'json'};
 import {BASE_FEATURES,PRV_FEATURES,POPULATION_FEATURE_METHOD,type PopulationFeatures,type PopulationObservation} from './populationFeatures.ts';
+import {ACTIVITY_CONTEXT_METHOD,predictPhysicalContext,type ActivityAssessment} from './activityContext.ts';
 interface Tree {left:number[];right:number[];feature:number[];threshold:number[];probability:number[]}
 interface Head {features:string[];trees:Tree[];minimum:number[];maximum:number[];trainingWindows:number;trainingSubjects:number}
 type HeadName='heartMotion'|'heartMotionPrv';
@@ -51,19 +52,25 @@ export function parsePopulationObservation(raw:unknown):PopulationObservation|nu
     typeof r.startNs!=='string'||typeof r.endNs!=='string'||!/^\d{1,24}$/.test(r.startNs)||!/^\d{1,24}$/.test(r.endNs)||BigInt(r.endNs)-BigInt(r.startNs)!==60_000_000_000n)return null;
   return {featureMethod:POPULATION_FEATURE_METHOD,at:r.at,device:r.device,sessionId:r.sessionId,startNs:r.startNs,endNs:r.endNs,features};
 }
-export interface PopulationRecord {observation:PopulationObservation;prediction:PopulationPrediction;source:'live'|'historical'}
+export interface PopulationRecord {observation:PopulationObservation;prediction:PopulationPrediction;source:'live'|'historical';assessment:ActivityAssessment}
 export interface PopulationSnapshot {
   schemaVersion:1;model:typeof POPULATION_MODEL_INFO;current:PopulationRecord|null;last:PopulationRecord|null;
   reason:string|null;error:string|null;
+  contextMethod:typeof ACTIVITY_CONTEXT_METHOD;
 }
 export async function readPopulationSnapshot(signal?:AbortSignal):Promise<PopulationSnapshot>{
   const response=await fetch('/live-api/population-estimate',{cache:'no-store',signal});
   if(!response.ok)throw Error('汎用モデルの推定結果を読み込めません');
   const data=await response.json() as PopulationSnapshot;
   if(data.schemaVersion!==1||data.model?.id!==model.id)throw Error('PC受信機とWebの汎用モデルが一致しません');
+  if(data.contextMethod!==ACTIVITY_CONTEXT_METHOD)throw Error('運動判定を有効にするにはPC受信機を再起動してください');
   for(const record of [data.current,data.last])if(record){
     const observation=parsePopulationObservation(record.observation),prediction=observation?predictPopulationStress(observation.features):null;
     if(!prediction||record.prediction?.modelId!==model.id||!finite(record.prediction.value)||Math.abs(record.prediction.value-prediction.value)>1e-8||!['live','historical'].includes(record.source))throw Error('推定結果の測定情報を確認できません');
+    const a=record.assessment;
+    if(!a||a.method!==ACTIVITY_CONTEXT_METHOD||!['eligible','movement','recovery','legacy_unfiltered'].includes(a.status)||
+      !finite(a.bodyResponseScore)||Math.abs(a.bodyResponseScore-prediction.value)>1e-8||
+      (a.status==='eligible'?a.stressScore!==a.bodyResponseScore:a.stressScore!==null)||!finite(a.exerciseOutput)||Math.abs(a.exerciseOutput-predictPhysicalContext(observation!.features)[2])>1e-8)throw Error('運動判定の情報を確認できません');
   }
   return data;
 }

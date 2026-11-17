@@ -1,0 +1,61 @@
+{
+  "e4PersonHeldOut": {
+    "rest": {
+      "windows": 333,
+      "oldPositiveRate": 0.16516516516516516,
+      "oldModelWithContextPositiveRate": 0.15615615615615616,
+      "oldModelPositiveRateAmongEligible": 0.15950920245398773,
+      "cardiacOnlyPositiveRate": 0.3813813813813814,
+      "rejectedFraction": 0.021021021021021023,
+      "newPositiveRateAcrossAllWindows": 0.37237237237237236,
+      "positiveRateAmongEligible": 0.3803680981595092
+    },
+    "stress_task": {
+      "windows": 120,
+      "oldPositiveRate": 0.35833333333333334,
+      "oldModelWithContextPositiveRate": 0.31666666666666665,
+      "oldModelPositiveRateAmongEligible": 0.33043478260869563,
+      "cardiacOnlyPositiveRate": 0.6,
+      "rejectedFraction": 0.041666666666666664,
+      "newPositiveRateAcrossAllWindows": 0.575,
+      "positiveRateAmongEligible": 0.6
+    },
+    "exercise_or_recovery": {
+      "windows": 1126,
+      "oldPositiveRate": 0.9182948490230906,
+      "oldModelWithContextPositiveRate": 0.056838365896980464,
+      "oldModelPositiveRateAmongEligible": 0.6808510638297872,
+      "cardiacOnlyPositiveRate": 0.8188277087033747,
+      "rejectedFraction": 0.91651865008881,
+      "newPositiveRateAcrossAllWindows": 0.05328596802841918,
+      "positiveRateAmongEligible": 0.6382978723404256
+    }
+  },
+  "externalExercise": {
+    "exercise_or_recovery": {
+      "windows": 100,
+      "oldPositiveRate": 0.99,
+      "oldModelWithContextPositiveRate": 0.0,
+      "oldModelPositiveRateAmongEligible": null,
+      "cardiacOnlyPositiveRate": 0.81,
+      "rejectedFraction": 1.0,
+      "newPositiveRateAcrossAllWindows": 0.0,
+      "positiveRateAmongEligible": null
+    }
+  },
+  "externalRecords": 19,
+  "externalSubjects": 8,
+  "externalSkipped": [
+    {
+      "record": "s2_walk",
+      "start": 300.0,
+      "reason": "accelerometer gap"
+    }
+  ],
+  "limitations": [
+    "Rejection is abstention, not a correct non-stress diagnosis.",
+    "E4 mental-task sensitivity and eligibility must be reported alongside lower exercise false-positive rate.",
+    "External HR uses ECG annotations and separate wearable clocks; Pixel Watch transfer remains unvalidated.",
+    "No concurrent exercise-plus-psychological-stress labels or true daily-life ground truth."
+  ]
+}
